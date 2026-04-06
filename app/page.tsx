@@ -9,6 +9,30 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 
+interface BaseMenuItem {
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  color: string;
+  shadow: string;
+  bg: string;
+  textColor: string;
+  accentColor: string;
+  adminOnly?: boolean;
+}
+
+interface LinkMenuItem extends BaseMenuItem {
+  href: string;
+  onClick?: never;
+}
+
+interface ActionMenuItem extends BaseMenuItem {
+  href?: never;
+  onClick: () => void;
+}
+
+type MenuItem = LinkMenuItem | ActionMenuItem;
+
 export default function Home() {
   const { store, loading } = useStore();
   const { isCashier } = useAuth();
@@ -25,7 +49,7 @@ export default function Home() {
     return <StoreSetup />;
   }
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       title: 'POS Checkout',
       description: 'Start a new transaction',
@@ -107,7 +131,9 @@ export default function Home() {
       accentColor: 'text-gray-600/70',
       adminOnly: true
     }
-  ].filter(item => !item.adminOnly || !isCashier);
+  ];
+
+  const filteredItems = menuItems.filter(item => !item.adminOnly || !isCashier);
 
   return (
     <main className="min-h-screen bg-gray-50 font-sans">
@@ -132,14 +158,14 @@ export default function Home() {
             </p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-              {menuItems.map((item, index) => (
+              {filteredItems.map((item, index) => (
                 <motion.div
                   key={item.title}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  {item.href ? (
+                  {'href' in item && item.href ? (
                     <Link 
                       href={item.href}
                       className={`group block p-10 ${item.bg} rounded-[2.5rem] border border-transparent hover:border-white hover:shadow-2xl transition-all relative overflow-hidden h-full`}
@@ -156,7 +182,7 @@ export default function Home() {
                         Open Menu <ArrowRight className="w-4 h-4" />
                       </div>
                     </Link>
-                  ) : (
+                  ) : 'onClick' in item ? (
                     <button 
                       onClick={item.onClick}
                       className={`group block w-full p-10 ${item.bg} rounded-[2.5rem] border border-transparent hover:border-white hover:shadow-2xl transition-all relative overflow-hidden h-full text-left`}
@@ -173,7 +199,7 @@ export default function Home() {
                         Open Settings <ArrowRight className="w-4 h-4" />
                       </div>
                     </button>
-                  )}
+                  ) : null}
                 </motion.div>
               ))}
             </div>
