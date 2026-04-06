@@ -17,8 +17,11 @@ import {
 import Link from 'next/link';
 import { motion } from 'motion/react';
 
+import { useBranches } from '@/lib/hooks/use-branches';
+
 export default function DailySummaryPage() {
-  const { loading, getDailySummary } = useReports();
+  const { currentBranchId } = useBranches();
+  const { loading, getDailySummary } = useReports(currentBranchId || undefined);
   const { isCashier } = useAuth();
   const { store } = useStore();
 

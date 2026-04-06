@@ -2,13 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/hooks/use-store';
-import { motion } from 'motion/react';
-import { Store, ArrowLeft, Save, Percent, X, Building2, MapPin, Hash, ClipboardList, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { motion, AnimatePresence } from 'motion/react';
+import { Store, ArrowLeft, Save, Percent, X, Building2, MapPin, Hash, ClipboardList, ChevronRight, Users, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { Header } from '@/components/layout/header';
+import { UserManagement } from '@/components/admin/user-management';
 
 export default function SettingsPage() {
   const { store, updateStore, loading } = useStore();
+  const { isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<'business' | 'users'>('business');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [tin, setTin] = useState('');
@@ -53,8 +57,8 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-gray-50 font-sans">
       <Header />
       
-      <div className="p-6 md:p-12 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-10">
+      <div className="p-6 md:p-12 max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div className="flex items-center gap-6">
             <Link 
               href="/"
@@ -63,167 +67,205 @@ export default function SettingsPage() {
               <ArrowLeft className="w-6 h-6" />
             </Link>
             <div>
-              <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-tight">Business Settings</h1>
-              <p className="text-gray-500 font-medium">Manage your store information and tax configuration for BIR compliance.</p>
+              <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-tight">Settings</h1>
+              <p className="text-gray-500 font-medium">Manage your business configuration and team.</p>
             </div>
           </div>
-        </div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden"
-        >
-          <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {/* Basic Info Section */}
-              <div className="space-y-8">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Basic Information</h3>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Name</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                      placeholder="Enter store name"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Address</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                      placeholder="Enter store address"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">TIN (Tax Identification Number)</label>
-                  <div className="relative">
-                    <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-                    <input
-                      type="text"
-                      value={tin}
-                      onChange={(e) => setTin(e.target.value)}
-                      className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                      placeholder="000-000-000-000"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tax Config Section */}
-              <div className="space-y-8">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-                    <Percent className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Tax Configuration</h3>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setTaxType('NON-VAT')}
-                    className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
-                      taxType === 'NON-VAT'
-                        ? 'border-orange-600 bg-orange-50'
-                        : 'border-gray-100 bg-white hover:border-gray-200'
-                    }`}
-                  >
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                      taxType === 'NON-VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      <X className="w-8 h-8" />
-                    </div>
-                    <div>
-                      <p className={`font-black text-xl uppercase tracking-tighter ${
-                        taxType === 'NON-VAT' ? 'text-orange-900' : 'text-gray-400'
-                      }`}>Non-VAT</p>
-                      <p className="text-sm text-gray-500 font-medium">Standard for small businesses. No tax breakdown on receipts.</p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTaxType('VAT')}
-                    className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
-                      taxType === 'VAT'
-                        ? 'border-orange-600 bg-orange-50'
-                        : 'border-gray-100 bg-white hover:border-gray-200'
-                    }`}
-                  >
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                      taxType === 'VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      <Percent className="w-8 h-8" />
-                    </div>
-                    <div>
-                      <p className={`font-black text-xl uppercase tracking-tighter ${
-                        taxType === 'VAT' ? 'text-orange-900' : 'text-gray-400'
-                      }`}>VAT (12%)</p>
-                      <p className="text-sm text-gray-500 font-medium">Value Added Tax. Shows detailed breakdown on all receipts.</p>
-                    </div>
-                  </button>
-                </div>
-
-                {taxType === 'VAT' && (
-                  <div className="space-y-3 pt-4">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">VAT Rate (%)</label>
-                    <input
-                      type="number"
-                      value={vatRate}
-                      onChange={(e) => setVatRate(Number(e.target.value))}
-                      className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                {showSuccess && (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="bg-green-50 text-green-600 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-full flex items-center gap-2"
-                  >
-                    <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
-                    Settings Saved Successfully
-                  </motion.div>
-                )}
-              </div>
-              
+          {isAdmin && (
+            <div className="flex gap-2 bg-white p-2 rounded-[2rem] shadow-sm border border-gray-100">
               <button
-                type="submit"
-                disabled={isSaving}
-                className="w-full md:w-auto bg-gray-900 text-white font-black px-12 py-6 rounded-[2rem] flex items-center justify-center gap-4 hover:bg-black transition-all active:scale-95 shadow-2xl disabled:opacity-50 disabled:scale-100 uppercase tracking-widest text-sm"
+                onClick={() => setActiveTab('business')}
+                className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
+                  activeTab === 'business' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
+                }`}
               >
-                <Save className="w-6 h-6" />
-                {isSaving ? 'SAVING CHANGES...' : 'SAVE BUSINESS SETTINGS'}
+                <Settings className="w-4 h-4" />
+                Business
+              </button>
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
+                  activeTab === 'users' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                Users
               </button>
             </div>
-          </form>
-        </motion.div>
+          )}
+        </div>
+
+        <AnimatePresence mode="wait">
+          {activeTab === 'business' ? (
+            <motion.div 
+              key="business"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden"
+            >
+              <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  {/* Basic Info Section */}
+                  <div className="space-y-8">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Basic Information</h3>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Name</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                          placeholder="Enter store name"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Address</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                          placeholder="Enter store address"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">TIN (Tax Identification Number)</label>
+                      <div className="relative">
+                        <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
+                        <input
+                          type="text"
+                          value={tin}
+                          onChange={(e) => setTin(e.target.value)}
+                          className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                          placeholder="000-000-000-000"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tax Config Section */}
+                  <div className="space-y-8">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                        <Percent className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Tax Configuration</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setTaxType('NON-VAT')}
+                        className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
+                          taxType === 'NON-VAT'
+                            ? 'border-orange-600 bg-orange-50'
+                            : 'border-gray-100 bg-white hover:border-gray-200'
+                        }`}
+                      >
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                          taxType === 'NON-VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
+                        }`}>
+                          <X className="w-8 h-8" />
+                        </div>
+                        <div>
+                          <p className={`font-black text-xl uppercase tracking-tighter ${
+                            taxType === 'NON-VAT' ? 'text-orange-900' : 'text-gray-400'
+                          }`}>Non-VAT</p>
+                          <p className="text-sm text-gray-500 font-medium">Standard for small businesses. No tax breakdown on receipts.</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTaxType('VAT')}
+                        className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
+                          taxType === 'VAT'
+                            ? 'border-orange-600 bg-orange-50'
+                            : 'border-gray-100 bg-white hover:border-gray-200'
+                        }`}
+                      >
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                          taxType === 'VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
+                        }`}>
+                          <Percent className="w-8 h-8" />
+                        </div>
+                        <div>
+                          <p className={`font-black text-xl uppercase tracking-tighter ${
+                            taxType === 'VAT' ? 'text-orange-900' : 'text-gray-400'
+                          }`}>VAT (12%)</p>
+                          <p className="text-sm text-gray-500 font-medium">Value Added Tax. Shows detailed breakdown on all receipts.</p>
+                        </div>
+                      </button>
+                    </div>
+
+                    {taxType === 'VAT' && (
+                      <div className="space-y-3 pt-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">VAT Rate (%)</label>
+                        <input
+                          type="number"
+                          value={vatRate}
+                          onChange={(e) => setVatRate(Number(e.target.value))}
+                          className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    {showSuccess && (
+                      <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="bg-green-50 text-green-600 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-full flex items-center gap-2"
+                      >
+                        <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
+                        Settings Saved Successfully
+                      </motion.div>
+                    )}
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="w-full md:w-auto bg-gray-900 text-white font-black px-12 py-6 rounded-[2rem] flex items-center justify-center gap-4 hover:bg-black transition-all active:scale-95 shadow-2xl disabled:opacity-50 disabled:scale-100 uppercase tracking-widest text-sm"
+                  >
+                    <Save className="w-6 h-6" />
+                    {isSaving ? 'SAVING CHANGES...' : 'SAVE BUSINESS SETTINGS'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="users"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <UserManagement />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link 

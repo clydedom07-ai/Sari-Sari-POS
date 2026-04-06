@@ -2,8 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Receipt } from '@/components/pos/receipt';
-import { StoreInfo, Branch, dbUtil, STORES } from '@/lib/db/idb';
+import { StoreInfo, Branch } from '@/lib/db/idb';
 import { useBranches } from '@/lib/hooks/use-branches';
+import { storeService } from '@/lib/services/store-service';
 
 interface ReceiptData {
   ticketNumber: string;
@@ -41,8 +42,8 @@ export function ReceiptProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const fetchStore = async () => {
-      const stores = await dbUtil.getItems<StoreInfo>(STORES.STORE_INFO);
-      if (stores.length > 0) setStoreInfo(stores[0]);
+      const store = await storeService.getStore();
+      if (store) setStoreInfo(store);
     };
     fetchStore();
   }, []);

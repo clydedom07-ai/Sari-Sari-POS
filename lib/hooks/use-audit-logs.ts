@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, AuditLog } from '@/lib/db/idb';
+import { AuditLog } from '@/lib/db/idb';
+import { auditService } from '@/lib/services/audit-service';
 
 export function useAuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -10,7 +11,7 @@ export function useAuditLogs() {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await dbUtil.getItems<AuditLog>(STORES.AUDIT_LOGS);
+      const data = await auditService.getAll();
       setLogs(data.sort((a, b) => b.timestamp - a.timestamp));
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);

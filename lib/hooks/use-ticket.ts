@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES } from '@/lib/db/idb';
+import { metadataService } from '@/lib/services/metadata-service';
+import { transactionService } from '@/lib/services/transaction-service';
 
-export function useTicket() {
+export function useTicket(branchId?: string) {
   const [currentTicket, setCurrentTicket] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -18,15 +19,16 @@ export function useTicket() {
   }, []);
 
   const fetchTicket = useCallback(async () => {
+    if (!branchId) return;
     setLoading(true);
     try {
-      const meta = await dbUtil.getItemById<{key: string, value: string}>(STORES.METADATA as any, 'last_ticket_number');
+      const metaKey = `last_ticket_number_${branchId}`;
+      const meta = await metadataService.get(metaKey);
       let lastTicket = meta?.value;
 
       if (!lastTicket) {
         // Fallback to scanning transactions if metadata is empty
-        const transactions = await dbUtil.getItems<any>(STORES.TRANSACTIONS);
-        const active = transactions.filter((t: any) => !t.isDeleted);
+        const active = await transactionService.getByBranch(branchId);
         if (active.length > 0) {
           const sorted = active.sort((a: any, b: any) => b.timestamp - a.timestamp);
           lastTicket = sorted[0].ticketNumber;
@@ -41,7 +43,7 @@ export function useTicket() {
     } finally {
       setLoading(false);
     }
-  }, [generateNextNumber]);
+  }, [generateNextNumber, branchId]);
 
   useEffect(() => {
     fetchTicket();

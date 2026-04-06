@@ -1,12 +1,18 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User } from '@/lib/db/idb';
+import { useRouter, usePathname } from 'next/navigation';
+import { userService } from '@/lib/services/user-service';
+import { auditService } from '@/lib/services/audit-service';
 
 export type UserRole = 'admin' | 'cashier';
 
 interface AuthContextType {
-  role: UserRole;
-  switchRole: (role: UserRole) => void;
+  user: Omit<User, 'passwordHash'> | null;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, role: UserRole) => Promise<void>;
+  logout: () => void;
   isAdmin: boolean;
   isCashier: boolean;
   loading: boolean;
@@ -14,15 +20,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Simple hash function for simulation
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<UserRole>('admin');
+  const [user, setUser] = useState<Omit<User, 'passwordHash'> | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const initAuth = () => {
-      const savedRole = localStorage.getItem('user-role') as UserRole;
-      if (savedRole && (savedRole === 'admin' || savedRole === 'cashier')) {
-        setRole(savedRole);
+    const initAuth = async () => {
+      const savedUserId = localStorage.getItem('pos-user-id');
+      if (savedUserId) {
+        try {
+          const userData = await userService.getById(savedUserId);
+          if (userData) {
+            const { passwordHash, ...userWithoutPassword } = userData;
+            setUser(userWithoutPassword);
+          } else {
+            localStorage.removeItem('pos-user-id');
+          }
+        } catch (error) {
+          console.error('Failed to load user:', error);
+        }
       }
       setLoading(false);
     };
@@ -30,16 +57,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  const switchRole = (newRole: UserRole) => {
-    setRole(newRole);
-    localStorage.setItem('user-role', newRole);
+  const login = async (email: string, password: string) => {
+    const users = await userService.getAll();
+    const foundUser = users.find(u => u.email === email);
+    
+    if (!foundUser) {
+      throw new Error('Invalid email or password');
+    }
+
+    const hashedPassword = await hashPassword(password);
+    if (foundUser.passwordHash !== hashedPassword) {
+      throw new Error('Invalid email or password');
+    }
+
+    const { passwordHash, ...userWithoutPassword } = foundUser;
+    setUser(userWithoutPassword);
+    localStorage.setItem('pos-user-id', foundUser.id);
+    await auditService.log('USER_LOGIN', `User ${email} logged in`, email);
+    router.push('/');
+  };
+
+  const signup = async (email: string, password: string, role: UserRole) => {
+    const users = await userService.getAll();
+    if (users.some(u => u.email === email)) {
+      throw new Error('Email already exists');
+    }
+
+    const hashedPassword = await hashPassword(password);
+    const businessId = 'main_config'; // Default business ID for local simulation
+    const newUser: User = {
+      id: crypto.randomUUID(),
+      email,
+      passwordHash: hashedPassword,
+      role,
+      businessId,
+      assignedBranchIds: [], // Admins have access to all, cashiers need assignment
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    await userService.create(newUser);
+    await auditService.log('USER_SIGNUP', `User ${email} signed up as ${role}`, email);
+    
+    // Auto login after signup
+    const { passwordHash, ...userWithoutPassword } = newUser;
+    setUser(userWithoutPassword);
+    localStorage.setItem('pos-user-id', newUser.id);
+    router.push('/');
+  };
+
+  const logout = () => {
+    if (user) {
+      auditService.log('USER_LOGOUT', `User ${user.email} logged out`, user.email);
+    }
+    setUser(null);
+    localStorage.removeItem('pos-user-id');
+    router.push('/login');
   };
 
   const value = {
-    role,
-    switchRole,
-    isAdmin: role === 'admin',
-    isCashier: role === 'cashier',
+    user,
+    login,
+    signup,
+    logout,
+    isAdmin: user?.role === 'admin',
+    isCashier: user?.role === 'cashier',
     loading,
   };
 

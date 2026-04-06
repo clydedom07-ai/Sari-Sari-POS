@@ -1,8 +1,8 @@
 'use client';
 
 import { useStore } from '@/lib/hooks/use-store';
-import { useAuth, UserRole } from '@/lib/contexts/auth-context';
-import { Store, MapPin, Clock, UserCircle, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { Store, Clock, UserCircle, ChevronDown, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BranchSelector } from './branch-selector';
 import { BranchManagement } from '../branches/branch-management';
@@ -10,9 +10,9 @@ import { useState } from 'react';
 
 export function Header({ ticketNumber }: { ticketNumber?: string }) {
   const { store } = useStore();
-  const { role, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const [isManagingBranches, setIsManagingBranches] = useState(false);
-  const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   return (
     <header className="border-b bg-white/80 backdrop-blur-md px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
@@ -44,28 +44,28 @@ export function Header({ ticketNumber }: { ticketNumber?: string }) {
       </motion.div>
       
       <div className="flex items-center gap-4">
-        {/* Role Switcher */}
+        {/* User Menu */}
         <div className="relative">
           <button 
-            onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-100 transition-all group"
           >
-            <div className={`p-1.5 rounded-lg ${role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+            <div className={`p-1.5 rounded-lg ${user?.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
               <UserCircle className="w-4 h-4" />
             </div>
             <div className="text-left hidden sm:block">
-              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Role</p>
-              <p className="text-xs font-bold text-gray-900 uppercase tracking-tight">{role}</p>
+              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">{user?.role}</p>
+              <p className="text-xs font-bold text-gray-900 uppercase tracking-tight truncate max-w-[100px]">{user?.email}</p>
             </div>
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isRoleMenuOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
           </button>
 
           <AnimatePresence>
-            {isRoleMenuOpen && (
+            {isUserMenuOpen && (
               <>
                 <div 
                   className="fixed inset-0 z-40" 
-                  onClick={() => setIsRoleMenuOpen(false)} 
+                  onClick={() => setIsUserMenuOpen(false)} 
                 />
                 <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -73,29 +73,21 @@ export function Header({ ticketNumber }: { ticketNumber?: string }) {
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 z-50 overflow-hidden"
                 >
+                  <div className="p-3 border-b border-gray-50 mb-1">
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Logged in as</p>
+                    <p className="text-xs font-bold text-gray-900 truncate">{user?.email}</p>
+                  </div>
                   <button
                     onClick={() => {
-                      switchRole('admin');
-                      setIsRoleMenuOpen(false);
+                      logout();
+                      setIsUserMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${role === 'admin' ? 'bg-purple-50 text-purple-600' : 'hover:bg-gray-50 text-gray-600'}`}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-red-50 text-red-600"
                   >
-                    <div className={`p-1.5 rounded-lg ${role === 'admin' ? 'bg-purple-600 text-white' : 'bg-gray-100'}`}>
-                      <UserCircle className="w-4 h-4" />
+                    <div className="p-1.5 rounded-lg bg-red-100">
+                      <LogOut className="w-4 h-4" />
                     </div>
-                    <span className="font-bold text-sm">Admin</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      switchRole('cashier');
-                      setIsRoleMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${role === 'cashier' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50 text-gray-600'}`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${role === 'cashier' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>
-                      <UserCircle className="w-4 h-4" />
-                    </div>
-                    <span className="font-bold text-sm">Cashier</span>
+                    <span className="font-bold text-sm">Logout</span>
                   </button>
                 </motion.div>
               </>

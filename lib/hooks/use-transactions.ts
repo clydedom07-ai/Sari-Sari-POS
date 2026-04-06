@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, Transaction, Product } from '@/lib/db/idb';
-import { syncDb } from '@/lib/db/sync-queue';
+import { Transaction } from '@/lib/db/idb';
+import { transactionService } from '@/lib/services/transaction-service';
+import { metadataService } from '@/lib/services/metadata-service';
 
 export function useTransactions(branchId?: string) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -11,15 +12,14 @@ export function useTransactions(branchId?: string) {
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await dbUtil.getItems<Transaction>(STORES.TRANSACTIONS);
-      const activeTransactions = data.filter(t => !t.isDeleted);
-      
-      let filtered = activeTransactions;
+      let data: Transaction[];
       if (branchId) {
-        filtered = activeTransactions.filter(t => t.branchId === branchId);
+        data = await transactionService.getByBranch(branchId);
+      } else {
+        data = await transactionService.getAll();
       }
       
-      setTransactions(filtered.sort((a, b) => b.timestamp - a.timestamp));
+      setTransactions(data.sort((a, b) => b.timestamp - a.timestamp));
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
     } finally {
@@ -31,22 +31,21 @@ export function useTransactions(branchId?: string) {
     fetchTransactions();
   }, [fetchTransactions]);
 
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'updatedAt'>) => {
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'updatedAt' | 'isDeleted'>) => {
+    const id = crypto.randomUUID();
     const now = Date.now();
     const newTransaction: Transaction = {
       ...transaction,
-      id: crypto.randomUUID(),
+      id,
       updatedAt: now,
+      isDeleted: false,
     };
-    await syncDb.add(STORES.TRANSACTIONS, newTransaction);
+    await transactionService.create(newTransaction);
     
     // Update last ticket number in metadata for fast sequential generation
     try {
-      await dbUtil.updateItem(STORES.METADATA as any, { 
-        key: 'last_ticket_number', 
-        value: newTransaction.ticketNumber,
-        updatedAt: now 
-      });
+      const metaKey = `last_ticket_number_${newTransaction.branchId}`;
+      await metadataService.set(metaKey, newTransaction.ticketNumber);
     } catch (e) {
       console.error('Failed to update ticket metadata:', e);
     }
@@ -56,16 +55,17 @@ export function useTransactions(branchId?: string) {
   };
 
   const getNextTicketNumber = useCallback(async () => {
+    if (!branchId) return 'T-0001';
     try {
       // 1. Try to get from metadata for speed
-      const lastTicketMeta = await dbUtil.getItemById<{key: string, value: string}>(STORES.METADATA as any, 'last_ticket_number');
+      const metaKey = `last_ticket_number_${branchId}`;
+      const lastTicketMeta = await metadataService.get(metaKey);
       
       let lastTicket = lastTicketMeta?.value;
 
       // 2. Fallback to scanning transactions if metadata is missing (e.g. first time or after clear)
       if (!lastTicket) {
-        const data = await dbUtil.getItems<Transaction>(STORES.TRANSACTIONS);
-        const activeTransactions = data.filter(t => !t.isDeleted);
+        const activeTransactions = await transactionService.getByBranch(branchId);
         
         if (activeTransactions.length > 0) {
           const sorted = [...activeTransactions].sort((a, b) => b.timestamp - a.timestamp);
@@ -86,7 +86,7 @@ export function useTransactions(branchId?: string) {
       console.error('Failed to generate next ticket number:', error);
       return 'T-0001';
     }
-  }, []);
+  }, [branchId]);
 
   return {
     transactions,

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, Supplier, RestockTransaction, RestockItem, Product } from '@/lib/db/idb';
+import { Supplier, RestockTransaction, RestockItem } from '@/lib/db/idb';
 import { useBranches } from './use-branches';
+import { restockService } from '@/lib/services/restock-service';
+import { productService } from '@/lib/services/product-service';
 
 export function useRestocking() {
   const { currentBranch } = useBranches();
@@ -14,17 +16,13 @@ export function useRestocking() {
     if (!currentBranch) return;
     setLoading(true);
     try {
-      const [allSuppliers, allRestocks] = await Promise.all([
-        dbUtil.getItems<Supplier>(STORES.SUPPLIERS),
-        dbUtil.getItems<RestockTransaction>(STORES.RESTOCK_TRANSACTIONS)
+      const [branchSuppliers, branchRestocks] = await Promise.all([
+        restockService.getSuppliersByBranch(currentBranch.id),
+        restockService.getByBranch(currentBranch.id)
       ]);
 
-      setSuppliers(allSuppliers.filter(s => s.branchId === currentBranch.id && !s.isDeleted));
-      setRestockHistory(
-        allRestocks
-          .filter(r => r.branchId === currentBranch.id && !r.isDeleted)
-          .sort((a, b) => b.timestamp - a.timestamp)
-      );
+      setSuppliers(branchSuppliers);
+      setRestockHistory(branchRestocks.sort((a, b) => b.timestamp - a.timestamp));
     } catch (error) {
       console.error('Error fetching restocking data:', error);
     } finally {
@@ -38,30 +36,25 @@ export function useRestocking() {
 
   const addSupplier = async (supplierData: Omit<Supplier, 'id' | 'branchId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => {
     if (!currentBranch) return;
-    const newSupplier: Supplier = {
+    const id = crypto.randomUUID();
+    const now = Date.now();
+    await restockService.createSupplier({
       ...supplierData,
-      id: crypto.randomUUID(),
+      id,
       branchId: currentBranch.id,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      isDeleted: false
-    };
-    await dbUtil.addItem(STORES.SUPPLIERS, newSupplier);
+      createdAt: now,
+    });
     await fetchData();
   };
 
   const updateSupplier = async (supplier: Supplier) => {
-    const updatedSupplier = { ...supplier, updatedAt: Date.now() };
-    await dbUtil.updateItem(STORES.SUPPLIERS, updatedSupplier);
+    await restockService.updateSupplier(supplier);
     await fetchData();
   };
 
   const deleteSupplier = async (id: string) => {
-    const supplier = await dbUtil.getItemById<Supplier>(STORES.SUPPLIERS, id);
-    if (supplier) {
-      await dbUtil.updateItem(STORES.SUPPLIERS, { ...supplier, isDeleted: true, updatedAt: Date.now() });
-      await fetchData();
-    }
+    await restockService.deleteSupplier(id);
+    await fetchData();
   };
 
   const recordRestock = async (
@@ -73,32 +66,34 @@ export function useRestocking() {
   ) => {
     if (!currentBranch) return;
 
+    const id = crypto.randomUUID();
+    const now = Date.now();
     const restockTx: RestockTransaction = {
-      id: crypto.randomUUID(),
+      id,
       supplierId,
       items,
       totalCost,
-      timestamp: Date.now(),
+      timestamp: now,
       branchId: currentBranch.id,
       referenceNumber,
       notes,
-      updatedAt: Date.now(),
+      updatedAt: now,
       isDeleted: false
     };
 
     // 1. Save restock transaction
-    await dbUtil.addItem(STORES.RESTOCK_TRANSACTIONS, restockTx);
+    await restockService.create(restockTx);
 
     // 2. Update product stocks
     for (const item of items) {
-      const product = await dbUtil.getItemById<Product>(STORES.PRODUCTS, item.productId);
+      const product = await productService.getById(item.productId);
       if (product) {
         const updatedProduct = {
           ...product,
           stock: product.stock + item.quantity,
-          updatedAt: Date.now()
+          updatedAt: now
         };
-        await dbUtil.updateItem(STORES.PRODUCTS, updatedProduct);
+        await productService.update(updatedProduct);
       }
     }
 

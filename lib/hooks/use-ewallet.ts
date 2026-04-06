@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, EWalletTransaction, logAudit } from '@/lib/db/idb';
-import { syncDb } from '@/lib/db/sync-queue';
+import { EWalletTransaction } from '@/lib/db/idb';
+import { ewalletService } from '@/lib/services/ewallet-service';
+import { auditService } from '@/lib/services/audit-service';
 
 export function useEWallet(branchId?: string) {
   const [transactions, setTransactions] = useState<EWalletTransaction[]>([]);
@@ -11,15 +12,14 @@ export function useEWallet(branchId?: string) {
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await dbUtil.getItems<EWalletTransaction>(STORES.EWALLET_TRANSACTIONS);
-      const activeTransactions = data.filter(t => !t.isDeleted);
-      
-      let filtered = activeTransactions;
+      let data: EWalletTransaction[];
       if (branchId) {
-        filtered = activeTransactions.filter(t => t.branchId === branchId);
+        data = await ewalletService.getByBranch(branchId);
+      } else {
+        data = await ewalletService.getAll();
       }
       
-      setTransactions(filtered.sort((a, b) => b.createdAt - a.createdAt));
+      setTransactions(data.sort((a, b) => b.createdAt - a.createdAt));
     } catch (error) {
       console.error('Failed to fetch e-wallet transactions:', error);
     } finally {
@@ -31,16 +31,18 @@ export function useEWallet(branchId?: string) {
     fetchTransactions();
   }, [fetchTransactions]);
 
-  const addTransaction = async (transaction: Omit<EWalletTransaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addTransaction = async (transaction: Omit<EWalletTransaction, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => {
+    const id = crypto.randomUUID();
     const now = Date.now();
     const newTransaction: EWalletTransaction = {
       ...transaction,
-      id: crypto.randomUUID(),
+      id,
       createdAt: now,
       updatedAt: now,
+      isDeleted: false,
     };
-    await syncDb.add(STORES.EWALLET_TRANSACTIONS, newTransaction);
-    await logAudit('EWALLET_TRANSACTION', JSON.stringify({ 
+    await ewalletService.create(newTransaction);
+    await auditService.log('EWALLET_TRANSACTION', JSON.stringify({ 
       type: transaction.type, 
       amount: transaction.amount, 
       method: transaction.method,

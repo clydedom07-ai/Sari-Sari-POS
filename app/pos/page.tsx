@@ -9,9 +9,8 @@ import { useEWallet } from '@/lib/hooks/use-ewallet';
 import { useBranches } from '@/lib/hooks/use-branches';
 import { useStore } from '@/lib/hooks/use-store';
 import { useReceipt } from '@/lib/context/receipt-context';
-import { STORES, Product, StoreInfo, Branch, logAudit } from '@/lib/db/idb';
-import { dbUtil } from '@/lib/db/idb';
-import { syncDb } from '@/lib/db/sync-queue';
+import { Product } from '@/lib/db/idb';
+import { auditService } from '@/lib/services/audit-service';
 import { Header } from '@/components/layout/header';
 import { QuickAdd } from '@/components/pos/quick-add';
 import { EWalletModal } from '@/components/pos/ewallet-modal';
@@ -27,18 +26,19 @@ import {
   X,
   Filter,
   History,
-  Wallet
+  Wallet,
+  MapPin
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function POSPage() {
-  const { currentBranchId, currentBranch } = useBranches();
+  const { currentBranchId, currentBranch, loading: loadingBranches } = useBranches();
   const { store, getNextORNumber } = useStore();
   const { products, updateProduct, refresh } = useProducts(currentBranchId || undefined);
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart, total } = useCart();
   const { addTransaction } = useTransactions(currentBranchId || undefined);
-  const { currentTicket, rotateTicket } = useTicket();
+  const { currentTicket, rotateTicket } = useTicket(currentBranchId || undefined);
   const { addTransaction: addEWalletTransaction } = useEWallet(currentBranchId || undefined);
   const { showReceipt } = useReceipt();
   
@@ -67,22 +67,15 @@ export default function POSPage() {
   const handleQuickAdd = async (name: string, price: number) => {
     if (price <= 0 || !currentBranchId) return;
     
-    const now = Date.now();
-    const newProduct: Product = {
-      id: crypto.randomUUID(),
-      name: name || 'Quick Item',
-      price,
-      cost: 0,
-      stock: 999,
-      category: 'Quick Add',
-      branchId: currentBranchId,
-      createdAt: now,
-      updatedAt: now,
-    };
-    
     try {
-      await syncDb.add(STORES.PRODUCTS, newProduct);
-      await refresh();
+      const newProduct = await addProduct({
+        name: name || 'Quick Item',
+        price,
+        cost: 0,
+        stock: 999,
+        category: 'Quick Add',
+        branchId: currentBranchId,
+      });
       addToCart(newProduct);
     } catch (error) {
       console.error('Quick add failed:', error);
@@ -121,7 +114,7 @@ export default function POSPage() {
         paymentMethod: 'cash',
       });
 
-      await logAudit('TRANSACTION_COMPLETE', JSON.stringify({
+      await auditService.log('TRANSACTION_COMPLETE', JSON.stringify({
         ticketNumber: ticketToFinalize,
         orNumber,
         total,
@@ -196,7 +189,7 @@ export default function POSPage() {
       }
     });
 
-    await logAudit('TRANSACTION_COMPLETE', JSON.stringify({
+    await auditService.log('TRANSACTION_COMPLETE', JSON.stringify({
       ticketNumber: currentTicket,
       orNumber,
       total: data.amount + data.fee,
@@ -208,6 +201,32 @@ export default function POSPage() {
     
     setIsEWalletOpen(false);
   };
+
+  if (!loadingBranches && !currentBranchId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white rounded-[3rem] p-12 text-center border border-gray-100 shadow-xl shadow-gray-200/50">
+            <div className="w-24 h-24 bg-red-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 text-red-600">
+              <MapPin className="w-12 h-12" />
+            </div>
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight uppercase mb-4">No Branch Access</h2>
+            <p className="text-gray-500 font-medium leading-relaxed mb-8">
+              You haven&apos;t been assigned to any branches yet. Please contact your administrator to get access.
+            </p>
+            <Link 
+              href="/"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">

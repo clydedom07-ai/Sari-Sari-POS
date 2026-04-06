@@ -1,8 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { dbUtil, STORES, StoreInfo, logAudit } from '@/lib/db/idb';
-import { syncDb } from '@/lib/db/sync-queue';
+import { StoreInfo } from '@/lib/db/idb';
+import { storeService } from '@/lib/services/store-service';
+import { auditService } from '@/lib/services/audit-service';
 
 interface StoreContextType {
   store: StoreInfo | null;
@@ -19,9 +20,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const loadStore = async () => {
     try {
-      const stores = await dbUtil.getItems<StoreInfo>(STORES.STORE_INFO);
-      if (stores.length > 0) {
-        setStore(stores[0]);
+      const currentStore = await storeService.getStore();
+      if (currentStore) {
+        setStore(currentStore);
       }
     } catch (error) {
       console.error('Failed to load store info:', error);
@@ -35,7 +36,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateStore = async (name: string, address: string = '', tin: string = '', taxType: 'VAT' | 'NON-VAT' = 'NON-VAT', vatRate: number = 12) => {
-    const currentStore = await dbUtil.getItemById<StoreInfo>(STORES.STORE_INFO, 'main_config');
+    const currentStore = await storeService.getById('main_config');
     const newStore: StoreInfo = {
       id: 'main_config',
       name,
@@ -47,13 +48,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       lastORNumber: currentStore?.lastORNumber || 0,
       updatedAt: Date.now(),
     };
-    await syncDb.update(STORES.STORE_INFO, newStore);
-    await logAudit('STORE_SETTINGS_UPDATE', JSON.stringify({ name, taxType, tin }));
+    await storeService.update(newStore);
+    await auditService.log('STORE_SETTINGS_UPDATE', JSON.stringify({ name, taxType, tin }));
     await loadStore();
   };
 
   const getNextORNumber = async () => {
-    const currentStore = store || (await dbUtil.getItemById<StoreInfo>(STORES.STORE_INFO, 'main_config'));
+    const currentStore = store || (await storeService.getById('main_config'));
     const nextNum = (currentStore?.lastORNumber || 0) + 1;
     
     const updatedStore: StoreInfo = {
@@ -68,7 +69,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updatedAt: Date.now(),
     };
     
-    await syncDb.update(STORES.STORE_INFO, updatedStore);
+    await storeService.update(updatedStore);
     await loadStore();
     
     return `OR-${nextNum.toString().padStart(6, '0')}`;

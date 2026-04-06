@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, Branch } from '@/lib/db/idb';
-import { syncDb } from '@/lib/db/sync-queue';
+import { Branch } from '@/lib/db/idb';
+import { branchService } from '@/lib/services/branch-service';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { useStore } from '@/lib/hooks/use-store';
 
 const CURRENT_BRANCH_KEY = 'sarisari_current_branch_id';
 
 export function useBranches() {
+  const { user, isAdmin } = useAuth();
+  const { store } = useStore();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [currentBranchId, setCurrentBranchId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -14,11 +18,21 @@ export function useBranches() {
   const fetchBranches = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await dbUtil.getItems<Branch>(STORES.BRANCHES);
-      const activeBranches = data.filter(b => !b.isDeleted);
+      let activeBranches: Branch[];
+      if (store) {
+        activeBranches = await branchService.getByBusiness(store.id);
+      } else {
+        activeBranches = await branchService.getAll();
+      }
+      
+      // Filter by user assignments if not admin
+      if (user && !isAdmin) {
+        activeBranches = activeBranches.filter(b => user.assignedBranchIds.includes(b.id));
+      }
+
       setBranches(activeBranches.sort((a, b) => b.createdAt - a.createdAt));
       
-      // Initialize current branch if not set or if current one is deleted
+      // Initialize current branch if not set or if current one is deleted/restricted
       const savedId = localStorage.getItem(CURRENT_BRANCH_KEY);
       if (activeBranches.length > 0) {
         if (!savedId || !activeBranches.find(b => b.id === savedId)) {
@@ -36,36 +50,36 @@ export function useBranches() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, isAdmin, store]);
 
   useEffect(() => {
     fetchBranches();
   }, [fetchBranches]);
 
-  const addBranch = async (branch: Omit<Branch, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addBranch = async (branch: Omit<Branch, 'id' | 'createdAt' | 'updatedAt' | 'businessId' | 'isDeleted'>) => {
+    const businessId = store?.id || 'main_config';
+    const id = crypto.randomUUID();
     const now = Date.now();
     const newBranch: Branch = {
       ...branch,
-      id: crypto.randomUUID(),
+      id,
+      businessId,
       createdAt: now,
       updatedAt: now,
+      isDeleted: false,
     };
-    await syncDb.add(STORES.BRANCHES, newBranch);
+    await branchService.create(newBranch);
     await fetchBranches();
     return newBranch;
   };
 
   const updateBranch = async (branch: Branch) => {
-    const updatedBranch = {
-      ...branch,
-      updatedAt: Date.now(),
-    };
-    await syncDb.update(STORES.BRANCHES, updatedBranch);
+    await branchService.update(branch);
     await fetchBranches();
   };
 
   const deleteBranch = async (id: string) => {
-    await syncDb.delete(STORES.BRANCHES, id);
+    await branchService.delete(id);
     await fetchBranches();
   };
 

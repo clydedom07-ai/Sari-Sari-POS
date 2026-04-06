@@ -1,11 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, Transaction, Customer, Product, EWalletTransaction } from '@/lib/db/idb';
+import { Transaction, Customer, Product, EWalletTransaction } from '@/lib/db/idb';
+import { transactionService } from '@/lib/services/transaction-service';
+import { ewalletService } from '@/lib/services/ewallet-service';
+import { customerService } from '@/lib/services/customer-service';
+import { productService } from '@/lib/services/product-service';
 
 export type SalesData = {
   date: string;
   amount: number;
+  profit?: number;
   [branchId: string]: any; // For branch-specific amounts
 };
 
@@ -36,29 +41,31 @@ export function useReports(branchId?: string) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [tData, ewData, cData, pData] = await Promise.all([
-        dbUtil.getItems<Transaction>(STORES.TRANSACTIONS),
-        dbUtil.getItems<EWalletTransaction>(STORES.EWALLET_TRANSACTIONS),
-        dbUtil.getItems<Customer>(STORES.CUSTOMERS),
-        dbUtil.getItems<Product>(STORES.PRODUCTS),
-      ]);
-      
-      let filteredTransactions = tData.filter(t => !t.isDeleted);
-      let filteredEwallet = ewData.filter(ew => !ew.isDeleted);
-      let filteredProducts = pData.filter(p => !p.isDeleted);
-      let filteredCustomers = cData.filter(c => !c.isDeleted);
-      
+      let tData: Transaction[];
+      let ewData: EWalletTransaction[];
+      let cData: Customer[];
+      let pData: Product[];
+
       if (branchId) {
-        filteredTransactions = filteredTransactions.filter(t => t.branchId === branchId);
-        filteredEwallet = filteredEwallet.filter(ew => ew.branchId === branchId);
-        filteredProducts = filteredProducts.filter(p => p.branchId === branchId);
-        filteredCustomers = filteredCustomers.filter(c => c.branchId === branchId);
+        [tData, ewData, cData, pData] = await Promise.all([
+          transactionService.getByBranch(branchId),
+          ewalletService.getByBranch(branchId),
+          customerService.getByBranch(branchId),
+          productService.getByBranch(branchId),
+        ]);
+      } else {
+        [tData, ewData, cData, pData] = await Promise.all([
+          transactionService.getAll(),
+          ewalletService.getAll(),
+          customerService.getAll(),
+          productService.getAll(),
+        ]);
       }
 
-      setTransactions(filteredTransactions);
-      setEwalletTransactions(filteredEwallet);
-      setCustomers(filteredCustomers);
-      setProducts(filteredProducts);
+      setTransactions(tData);
+      setEwalletTransactions(ewData);
+      setCustomers(cData);
+      setProducts(pData);
     } catch (error) {
       console.error('Failed to fetch report data:', error);
     } finally {

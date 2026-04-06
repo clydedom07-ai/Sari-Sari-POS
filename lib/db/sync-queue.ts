@@ -133,23 +133,25 @@ export async function processQueue(): Promise<void> {
  * SaaS-ready DB wrapper.
  */
 export const syncDb = {
-  async add<T extends { id: string }>(store: StoreName, item: T): Promise<string> {
-    await dbUtil.addItem(store, item);
+  async add<T>(store: StoreName, item: T): Promise<any> {
+    const result = await dbUtil.addItem(store, item);
     await queueAction(store, 'CREATE', item);
-    return item.id;
+    return result;
   },
 
-  async update<T extends { id: string }>(store: StoreName, item: T): Promise<string> {
-    await dbUtil.updateItem(store, item);
+  async update<T>(store: StoreName, item: T): Promise<any> {
+    const result = await dbUtil.updateItem(store, item);
     await queueAction(store, 'UPDATE', item);
-    return item.id;
+    return result;
   },
 
-  async delete(store: StoreName, id: string): Promise<void> {
+  async delete(store: StoreName, id: string | number): Promise<void> {
     const item = await dbUtil.getItemById<any>(store, id);
     if (item) {
+      // For metadata, the ID might be 'key'
+      const key = (item as any).id || (item as any).key || id;
       await dbUtil.deleteItem(store, id);
-      await queueAction(store, 'DELETE', { ...item, id, isDeleted: true });
+      await queueAction(store, 'DELETE', { ...item, id: key, isDeleted: true });
     }
   }
 };

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, Product, logAudit } from '@/lib/db/idb';
-import { syncDb } from '@/lib/db/sync-queue';
+import { Product } from '@/lib/db/idb';
+import { productService } from '@/lib/services/product-service';
+import { auditService } from '@/lib/services/audit-service';
 
 export function useProducts(branchId?: string) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -11,15 +12,14 @@ export function useProducts(branchId?: string) {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await dbUtil.getItems<Product>(STORES.PRODUCTS);
-      const activeProducts = data.filter(p => !p.isDeleted);
-      
-      let filtered = activeProducts;
+      let data: Product[];
       if (branchId) {
-        filtered = activeProducts.filter(p => p.branchId === branchId);
+        data = await productService.getByBranch(branchId);
+      } else {
+        data = await productService.getAll();
       }
       
-      setProducts(filtered.sort((a, b) => b.createdAt - a.createdAt));
+      setProducts(data.sort((a, b) => b.createdAt - a.createdAt));
     } catch (error) {
       console.error('Failed to fetch products:', error);
     } finally {
@@ -31,50 +31,47 @@ export function useProducts(branchId?: string) {
     fetchProducts();
   }, [fetchProducts]);
 
-  const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => {
+    const id = crypto.randomUUID();
     const now = Date.now();
     const newProduct: Product = {
       ...product,
-      id: crypto.randomUUID(),
+      id,
       createdAt: now,
       updatedAt: now,
+      isDeleted: false,
     };
-    await syncDb.add(STORES.PRODUCTS, newProduct);
-    await logAudit('PRODUCT_ADD', JSON.stringify({ name: newProduct.name, id: newProduct.id }));
+    await productService.create(newProduct);
+    await auditService.log('PRODUCT_ADD', JSON.stringify({ name: product.name, id }));
     await fetchProducts();
+    return newProduct;
   };
 
-  const addProducts = async (products: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+  const addProducts = async (products: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>[]) => {
     const now = Date.now();
     const newProducts: Product[] = products.map(p => ({
       ...p,
       id: crypto.randomUUID(),
       createdAt: now,
       updatedAt: now,
+      isDeleted: false,
     }));
 
-    // Add all to sync queue and local DB
-    for (const product of newProducts) {
-      await syncDb.add(STORES.PRODUCTS, product);
-    }
+    await productService.bulkCreate(newProducts);
     
-    await logAudit('PRODUCT_BULK_ADD', JSON.stringify({ count: newProducts.length }));
+    await auditService.log('PRODUCT_BULK_ADD', JSON.stringify({ count: newProducts.length }));
     await fetchProducts();
   };
 
   const updateProduct = async (product: Product) => {
-    const updatedProduct = {
-      ...product,
-      updatedAt: Date.now(),
-    };
-    await syncDb.update(STORES.PRODUCTS, updatedProduct);
-    await logAudit('PRODUCT_EDIT', JSON.stringify({ name: product.name, id: product.id }));
+    await productService.update(product);
+    await auditService.log('PRODUCT_EDIT', JSON.stringify({ name: product.name, id: product.id }));
     await fetchProducts();
   };
 
   const deleteProduct = async (id: string) => {
-    await syncDb.delete(STORES.PRODUCTS, id);
-    await logAudit('PRODUCT_DELETE', JSON.stringify({ id }));
+    await productService.delete(id);
+    await auditService.log('PRODUCT_DELETE', JSON.stringify({ id }));
     await fetchProducts();
   };
 

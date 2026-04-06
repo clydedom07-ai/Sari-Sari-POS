@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dbUtil, STORES, Customer, CreditEntry } from '@/lib/db/idb';
-import { syncDb } from '@/lib/db/sync-queue';
+import { Customer, CreditEntry } from '@/lib/db/idb';
+import { customerService } from '@/lib/services/customer-service';
 
 export function useCustomers(branchId?: string) {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -11,12 +11,13 @@ export function useCustomers(branchId?: string) {
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await dbUtil.getItems<Customer>(STORES.CUSTOMERS);
-      let filtered = data.filter(c => !c.isDeleted);
+      let data: Customer[];
       if (branchId) {
-        filtered = filtered.filter(c => c.branchId === branchId);
+        data = await customerService.getByBranch(branchId);
+      } else {
+        data = await customerService.getAll();
       }
-      setCustomers(filtered.sort((a, b) => b.createdAt - a.createdAt));
+      setCustomers(data.sort((a, b) => b.createdAt - a.createdAt));
     } catch (error) {
       console.error('Failed to fetch customers:', error);
     } finally {
@@ -28,32 +29,27 @@ export function useCustomers(branchId?: string) {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  const addCustomer = async (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalUtang' | 'branchId'>) => {
+  const addCustomer = async (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalUtang' | 'branchId' | 'isDeleted'>) => {
     if (!branchId) throw new Error('Branch ID is required to add a customer');
+    const id = crypto.randomUUID();
     const now = Date.now();
-    const newCustomer: Customer = {
+    await customerService.create({
       ...customer,
-      id: crypto.randomUUID(),
+      id,
       totalUtang: 0,
       branchId,
       createdAt: now,
-      updatedAt: now,
-    };
-    await syncDb.add(STORES.CUSTOMERS, newCustomer);
+    });
     await fetchCustomers();
   };
 
   const updateCustomer = async (customer: Customer) => {
-    const updatedCustomer = {
-      ...customer,
-      updatedAt: Date.now(),
-    };
-    await syncDb.update(STORES.CUSTOMERS, updatedCustomer);
+    await customerService.update(customer);
     await fetchCustomers();
   };
 
   const deleteCustomer = async (id: string) => {
-    await syncDb.delete(STORES.CUSTOMERS, id);
+    await customerService.delete(id);
     await fetchCustomers();
   };
 
@@ -63,7 +59,7 @@ export function useCustomers(branchId?: string) {
     if (!customer) return;
 
     const now = Date.now();
-    const entry: CreditEntry = {
+    const entry: Omit<CreditEntry, 'updatedAt' | 'isDeleted'> = {
       id: crypto.randomUUID(),
       customerId,
       branchId,
@@ -71,10 +67,9 @@ export function useCustomers(branchId?: string) {
       type,
       description,
       timestamp: now,
-      updatedAt: now,
     };
 
-    await syncDb.add(STORES.CREDIT_LOG, entry);
+    await customerService.recordCredit(entry);
     
     const updatedCustomer = {
       ...customer,
@@ -82,15 +77,13 @@ export function useCustomers(branchId?: string) {
       updatedAt: now,
     };
     
-    await syncDb.update(STORES.CUSTOMERS, updatedCustomer);
+    await customerService.update(updatedCustomer);
     await fetchCustomers();
   };
 
   const getCreditHistory = async (customerId: string) => {
-    const allEntries = await dbUtil.getItems<CreditEntry>(STORES.CREDIT_LOG);
-    return allEntries
-      .filter(e => e.customerId === customerId)
-      .sort((a, b) => b.timestamp - a.timestamp);
+    const history = await customerService.getCreditHistory(customerId);
+    return history.sort((a, b) => b.timestamp - a.timestamp);
   };
 
   return {

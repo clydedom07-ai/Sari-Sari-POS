@@ -15,6 +15,7 @@ export type StoreInfo = {
 export type Branch = {
   id: string;
   name: string;
+  businessId: string; // Reference to StoreInfo
   address?: string;
   contact?: string;
   createdAt: number;
@@ -148,10 +149,23 @@ export type AuditLog = {
   user?: string;
   details: string;
   timestamp: number;
+  updatedAt: number;
+  isDeleted?: boolean;
+};
+
+export type User = {
+  id: string;
+  email: string;
+  passwordHash: string;
+  role: 'admin' | 'cashier';
+  businessId: string; // Reference to StoreInfo
+  assignedBranchIds: string[]; // Branches this user can access
+  createdAt: number;
+  updatedAt: number;
 };
 
 const DB_NAME = 'SariSariPOS_DB';
-const DB_VERSION = 13; // Incremented for Audit Logs
+const DB_VERSION = 15; // Incremented for User model changes
 
 export const STORES = {
   STORE_INFO: 'store_info',
@@ -166,6 +180,7 @@ export const STORES = {
   SUPPLIERS: 'suppliers',
   RESTOCK_TRANSACTIONS: 'restock_transactions',
   AUDIT_LOGS: 'audit_logs',
+  USERS: 'users',
 } as const;
 
 export type StoreName = typeof STORES[keyof typeof STORES];
@@ -208,6 +223,7 @@ class IndexedDBUtility {
         ensureStore(STORES.SUPPLIERS, { keyPath: 'id' });
         ensureStore(STORES.RESTOCK_TRANSACTIONS, { keyPath: 'id' });
         ensureStore(STORES.AUDIT_LOGS, { keyPath: 'id' });
+        ensureStore(STORES.USERS, { keyPath: 'id' });
       };
     });
   }
@@ -274,18 +290,3 @@ class IndexedDBUtility {
 }
 
 export const dbUtil = new IndexedDBUtility();
-
-export async function logAudit(action: string, details: string, user?: string) {
-  const log: AuditLog = {
-    id: crypto.randomUUID(),
-    action,
-    details,
-    user,
-    timestamp: Date.now(),
-  };
-  try {
-    await dbUtil.addItem(STORES.AUDIT_LOGS, log);
-  } catch (error) {
-    console.error('Failed to log audit:', error);
-  }
-}
