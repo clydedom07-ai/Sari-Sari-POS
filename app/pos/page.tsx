@@ -188,7 +188,7 @@ export default function POSPage() {
       paymentMethod: 'e-wallet',
       type: 'ewallet',
       ewalletDetails: {
-        serviceType: data.type.replace('_', ' '),
+        type: data.type.replace('_', ' '),
         method: data.method,
         fee: data.fee,
         customerName: data.customerName,
@@ -201,7 +201,8 @@ export default function POSPage() {
       orNumber,
       total: data.amount + data.fee,
       type: 'ewallet',
-      serviceType: data.type,
+      ewalletType: data.type,
+      method: data.method,
       paymentMethod: 'e-wallet'
     }));
     

@@ -43,7 +43,7 @@ export function useEWallet(branchId?: string) {
     await logAudit('EWALLET_TRANSACTION', JSON.stringify({ 
       type: transaction.type, 
       amount: transaction.amount, 
-      service: transaction.serviceType,
+      method: transaction.method,
       reference: transaction.referenceNumber 
     }));
     await fetchTransactions();

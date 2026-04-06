@@ -17,7 +17,7 @@ interface ReceiptData {
   paymentMethod: string;
   type?: 'sales' | 'ewallet';
   ewalletDetails?: {
-    serviceType: string;
+    type: string;
     method: string;
     fee: number;
     customerName?: string;

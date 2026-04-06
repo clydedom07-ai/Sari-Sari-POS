@@ -203,7 +203,7 @@ export default function EWalletHistoryPage() {
                             paymentMethod: 'e-wallet',
                             type: 'ewallet',
                             ewalletDetails: {
-                              serviceType: t.type.replace('_', ' '),
+                              type: t.type.replace('_', ' '),
                               method: t.method,
                               fee: t.fee || 0,
                               customerName: t.customerName,

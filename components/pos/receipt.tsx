@@ -22,7 +22,7 @@ interface ReceiptProps {
   paymentMethod: string;
   type?: 'sales' | 'ewallet';
   ewalletDetails?: {
-    serviceType: string;
+    type: string;
     method: string;
     fee: number;
     customerName?: string;
@@ -88,7 +88,7 @@ const EWalletDetails = ({ details, total }: { details: any, total: number }) => 
   <div className="space-y-2 mb-4">
     <div className="flex justify-between">
       <span>Type:</span>
-      <span className="font-bold uppercase">{details?.serviceType}</span>
+      <span className="font-bold uppercase">{details?.type}</span>
     </div>
     <div className="flex justify-between">
       <span>Method:</span>
