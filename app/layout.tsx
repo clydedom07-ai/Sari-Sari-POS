@@ -1,5 +1,6 @@
-import type {Metadata, Viewport} from 'next';
-import './globals.css'; // Global styles
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
+
 import { StoreProvider } from '@/lib/hooks/use-store';
 import { ReceiptProvider } from '@/lib/context/receipt-context';
 import { AuthProvider } from '@/lib/contexts/auth-context';
@@ -29,8 +30,11 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
-  console.log("deploy fix");
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>
