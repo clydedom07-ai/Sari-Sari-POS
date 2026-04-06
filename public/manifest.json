@@ -1,0 +1,22 @@
+{
+  "name": "SariSari POS",
+  "short_name": "SariPOS",
+  "description": "A modern, offline-first POS for Sari-Sari stores.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/pos-icon/192/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://picsum.photos/seed/pos-icon/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

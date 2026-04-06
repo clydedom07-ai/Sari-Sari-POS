@@ -1,0 +1,5 @@
+{
+  "name": "Sari-Sari POS",
+  "description": "A standalone, offline-first PWA POS system for Filipino small businesses, featuring product management, transaction tracking, and a credit (utang) system.",
+  "requestFramePermissions": []
+}
