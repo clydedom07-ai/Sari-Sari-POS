@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BranchSelector } from './branch-selector';
 import { BranchManagement } from '../branches/branch-management';
 import { useState } from 'react';
+import Link from 'next/link';
 
 export function Header({ ticketNumber }: { ticketNumber?: string }) {
   const { store } = useStore();
@@ -77,6 +78,18 @@ export function Header({ ticketNumber }: { ticketNumber?: string }) {
                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Logged in as</p>
                     <p className="text-xs font-bold text-gray-900 truncate">{user?.email}</p>
                   </div>
+                  {isAdmin && (
+                    <Link
+                      href="/admin/users"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-blue-50 text-blue-600"
+                    >
+                      <div className="p-1.5 rounded-lg bg-blue-100">
+                        <UserCircle className="w-4 h-4" />
+                      </div>
+                      <span className="font-bold text-sm">Manage Users</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       logout();

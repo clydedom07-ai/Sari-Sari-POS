@@ -11,7 +11,7 @@ export type UserRole = 'admin' | 'cashier';
 interface AuthContextType {
   user: Omit<User, 'passwordHash'> | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, role: UserRole) => Promise<void>;
+  signup: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
   isCashier: boolean;
@@ -77,8 +77,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/');
   };
 
-  const signup = async (email: string, password: string, role: UserRole) => {
+  const signup = async (name: string, email: string, password: string, role: UserRole) => {
     const users = await userService.getAll();
+    
+    // Check if any user exists
+    if (users.length > 0) {
+      // If users exist, only an admin can create new users via management (not this signup page)
+      // But for this local simulation, we'll allow it if the user is an admin
+      if (user?.role !== 'admin') {
+        throw new Error('Only administrators can create new accounts.');
+      }
+    } else {
+      // First user MUST be an admin
+      if (role !== 'admin') {
+        throw new Error('The first user must be an administrator.');
+      }
+    }
+
     if (users.some(u => u.email === email)) {
       throw new Error('Email already exists');
     }
@@ -87,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const businessId = 'main_config'; // Default business ID for local simulation
     const newUser: User = {
       id: crypto.randomUUID(),
+      name,
       email,
       passwordHash: hashedPassword,
       role,
@@ -99,11 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await userService.create(newUser);
     await auditService.log('USER_SIGNUP', `User ${email} signed up as ${role}`, email);
     
-    // Auto login after signup
-    const { passwordHash, ...userWithoutPassword } = newUser;
-    setUser(userWithoutPassword);
-    localStorage.setItem('pos-user-id', newUser.id);
-    router.push('/');
+    // Auto login after signup if it's the first user
+    if (users.length === 0) {
+      const { passwordHash, ...userWithoutPassword } = newUser;
+      setUser(userWithoutPassword);
+      localStorage.setItem('pos-user-id', newUser.id);
+      router.push('/');
+    }
   };
 
   const logout = () => {

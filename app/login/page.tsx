@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/contexts/auth-context';
 import { motion } from 'motion/react';
 import { Store, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +23,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(email, password);
+      router.push(callbackUrl);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
     } finally {

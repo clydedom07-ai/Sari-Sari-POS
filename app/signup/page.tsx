@@ -7,9 +7,10 @@ import { Store, Mail, Lock, Loader2, ArrowRight, Shield, User } from 'lucide-rea
 import Link from 'next/link';
 
 export default function SignupPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('cashier');
+  const [role, setRole] = useState<UserRole>('admin'); // Default to admin for first user
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup } = useAuth();
@@ -19,7 +20,7 @@ export default function SignupPage() {
     setError('');
     setIsSubmitting(true);
     try {
-      await signup(email, password, role);
+      await signup(name, email, password, role);
     } catch (err: any) {
       setError(err.message || 'Failed to signup');
     } finally {
@@ -38,8 +39,8 @@ export default function SignupPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-600 rounded-[2rem] text-white shadow-2xl shadow-orange-200 mb-6">
             <Store className="w-10 h-10" />
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase">Join the POS</h1>
-          <p className="text-gray-500 font-medium">Create your store account</p>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none">Setup POS</h1>
+          <p className="text-gray-500 font-medium mt-2">Create the administrator account</p>
         </div>
 
         <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl border border-gray-100">
@@ -49,6 +50,21 @@ export default function SignupPage() {
                 {error}
               </div>
             )}
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                  placeholder="Juan Dela Cruz"
+                />
+              </div>
+            </div>
 
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Email Address</label>
@@ -80,35 +96,7 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Account Role</label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setRole('cashier')}
-                  className={`p-6 rounded-3xl flex flex-col items-center gap-3 transition-all border-2 ${
-                    role === 'cashier'
-                      ? 'bg-orange-50 border-orange-600 text-orange-600 shadow-lg shadow-orange-100'
-                      : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                  }`}
-                >
-                  <User className={`w-8 h-8 ${role === 'cashier' ? 'text-orange-600' : 'text-gray-300'}`} />
-                  <span className="font-black uppercase tracking-widest text-[10px]">Cashier</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('admin')}
-                  className={`p-6 rounded-3xl flex flex-col items-center gap-3 transition-all border-2 ${
-                    role === 'admin'
-                      ? 'bg-blue-50 border-blue-600 text-blue-600 shadow-lg shadow-blue-100'
-                      : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                  }`}
-                >
-                  <Shield className={`w-8 h-8 ${role === 'admin' ? 'text-blue-600' : 'text-gray-300'}`} />
-                  <span className="font-black uppercase tracking-widest text-[10px]">Admin</span>
-                </button>
-              </div>
-            </div>
+            <input type="hidden" value={role} />
 
             <button
               type="submit"
@@ -119,7 +107,7 @@ export default function SignupPage() {
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
-                  Create Account <ArrowRight className="w-6 h-6" />
+                  Setup Store <ArrowRight className="w-6 h-6" />
                 </>
               )}
             </button>

@@ -5,38 +5,37 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+interface AuthGuardProps {
+  children: React.ReactNode;
+  allowedRoles?: ('admin' | 'cashier')[];
+}
+
+export function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
+  const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (!loading) {
-      if (!user && pathname !== '/login' && pathname !== '/signup') {
-        router.push('/login');
-      } else if (user && (pathname === '/login' || pathname === '/signup')) {
-        router.push('/');
+      if (!user) {
+        router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      } else if (allowedRoles && !allowedRoles.includes(user.role)) {
+        router.push('/'); // Redirect to home if role not allowed
       }
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, router, pathname, allowedRoles]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-12 h-12 animate-spin text-orange-600" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <Loader2 className="w-12 h-12 text-orange-600 animate-spin mb-4" />
+        <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Verifying Session...</p>
       </div>
     );
   }
 
-  // Allow access to login and signup pages even if not logged in
-  if (!user && (pathname === '/login' || pathname === '/signup')) {
-    return <>{children}</>;
-  }
-
-  // If not logged in and not on login/signup, don't render children (will redirect)
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
+  if (allowedRoles && !allowedRoles.includes(user.role)) return null;
 
   return <>{children}</>;
 }

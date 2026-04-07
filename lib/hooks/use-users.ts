@@ -58,12 +58,58 @@ export function useUsers() {
     }
   };
 
+  const createUser = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!isAdmin || !currentUser) return;
+
+    try {
+      const newUser: User = {
+        ...userData,
+        id: crypto.randomUUID(),
+        businessId: currentUser.businessId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      await userService.create(newUser);
+      await auditService.log('USER_CREATED', `Created new user: ${userData.email}`);
+      await fetchUsers();
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      throw error;
+    }
+  };
+
+  const updateUser = async (userId: string, data: Partial<Omit<User, 'id' | 'businessId' | 'createdAt' | 'updatedAt'>>) => {
+    if (!isAdmin) return;
+
+    try {
+      const existingUser = await userService.getById(userId);
+      if (!existingUser) throw new Error('User not found');
+
+      const updatedUser: User = {
+        ...existingUser,
+        ...data,
+        updatedAt: Date.now(),
+      };
+
+      await userService.update(updatedUser);
+      await auditService.log('USER_UPDATED', `Updated user: ${existingUser.email}`);
+      await fetchUsers();
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      throw error;
+    }
+  };
+
   const deleteUser = async (userId: string) => {
     if (!isAdmin || userId === currentUser?.id) return;
 
     try {
+      const existingUser = await userService.getById(userId);
+      if (!existingUser) throw new Error('User not found');
+
       await userService.delete(userId);
-      await auditService.log('USER_DELETED', `Deleted user with ID ${userId}`);
+      await auditService.log('USER_DELETED', `Deleted user: ${existingUser.email}`);
       await fetchUsers();
     } catch (error) {
       console.error('Failed to delete user:', error);
@@ -74,6 +120,8 @@ export function useUsers() {
   return {
     users,
     loading,
+    createUser,
+    updateUser,
     updateUserBranches,
     deleteUser,
     refresh: fetchUsers,

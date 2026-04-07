@@ -55,7 +55,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <AuthGuard>
+    <AuthGuard allowedRoles={['admin']}>
       <div className="min-h-screen bg-gray-50 font-sans">
         <Header />
         
@@ -70,44 +70,17 @@ export default function SettingsPage() {
               </Link>
               <div>
                 <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-tight">Settings</h1>
-                <p className="text-gray-500 font-medium">Manage your business configuration and team.</p>
+                <p className="text-gray-500 font-medium">Manage your business configuration.</p>
               </div>
             </div>
-  
-            {isAdmin && (
-              <div className="flex gap-2 bg-white p-2 rounded-[2rem] shadow-sm border border-gray-100">
-                <button
-                  onClick={() => setActiveTab('business')}
-                  className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
-                    activeTab === 'business' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  <Settings className="w-4 h-4" />
-                  Business
-                </button>
-                <button
-                  onClick={() => setActiveTab('users')}
-                  className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
-                    activeTab === 'users' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  <Users className="w-4 h-4" />
-                  Users
-                </button>
-              </div>
-            )}
           </div>
   
-          <AnimatePresence mode="wait">
-            {activeTab === 'business' ? (
-              <motion.div 
-                key="business"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden"
-              >
-                <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden"
+          >
+            <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     {/* Basic Info Section */}
                     <div className="space-y-8">
@@ -256,20 +229,25 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </form>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="users"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                <UserManagement />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </motion.div>
   
           <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link 
+              href="/admin/users"
+              className="group p-8 bg-white hover:bg-blue-50 rounded-[2.5rem] border border-gray-100 hover:border-blue-200 transition-all flex items-center justify-between shadow-sm hover:shadow-xl hover:shadow-blue-500/5"
+            >
+              <div className="flex items-center gap-6">
+                <div className="bg-blue-100 p-4 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <Users className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-1">User Management</h4>
+                  <p className="text-gray-500 font-medium text-sm">Manage staff accounts and permissions.</p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-gray-300 group-hover:text-blue-600 transition-all" />
+            </Link>
+
             <Link 
               href="/admin/audit-trail"
               className="group p-8 bg-white hover:bg-orange-50 rounded-[2.5rem] border border-gray-100 hover:border-orange-200 transition-all flex items-center justify-between shadow-sm hover:shadow-xl hover:shadow-orange-500/5"
@@ -285,17 +263,17 @@ export default function SettingsPage() {
               </div>
               <ChevronRight className="w-6 h-6 text-gray-300 group-hover:text-orange-600 transition-all" />
             </Link>
-  
-            <div className="p-8 bg-orange-50 rounded-[2.5rem] border border-orange-100 flex items-start gap-6">
-              <div className="bg-orange-600 p-3 rounded-xl text-white shadow-lg shadow-orange-200">
-                <Store className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-lg font-black text-orange-900 uppercase tracking-tight mb-2">BIR Compliance Note</h4>
-                <p className="text-orange-800/70 font-medium leading-relaxed">
-                  Ensure your TIN and Address match your official BIR registration. These details will be printed on all Official Receipts (OR) generated by the system.
-                </p>
-              </div>
+          </div>
+
+          <div className="mt-6 p-8 bg-orange-50 rounded-[2.5rem] border border-orange-100 flex items-start gap-6">
+            <div className="bg-orange-600 p-3 rounded-xl text-white shadow-lg shadow-orange-200">
+              <Store className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-lg font-black text-orange-900 uppercase tracking-tight mb-2">BIR Compliance Note</h4>
+              <p className="text-orange-800/70 font-medium leading-relaxed">
+                Ensure your TIN and Address match your official BIR registration. These details will be printed on all Official Receipts (OR) generated by the system.
+              </p>
             </div>
           </div>
         </div>
