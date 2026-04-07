@@ -31,11 +31,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
+import { AuthGuard } from '@/components/auth/auth-guard';
 
 export default function POSPage() {
   const { currentBranchId, currentBranch, loading: loadingBranches } = useBranches();
-  const { store, getNextORNumber } = useStore();
-  const { products, updateProduct, refresh } = useProducts(currentBranchId || undefined);
+  const { store, getNextORNumber, products, addProduct } = useStore();
+  const { updateProduct, refresh } = useProducts(currentBranchId || undefined);
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart, total } = useCart();
   const { addTransaction } = useTransactions(currentBranchId || undefined);
   const { currentTicket, rotateTicket } = useTicket(currentBranchId || undefined);
@@ -51,18 +52,20 @@ export default function POSPage() {
   const [showCartMobile, setShowCartMobile] = useState(false);
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(products.map(p => p.category)));
+    const branchProducts = products.filter(p => p.branchId === currentBranchId);
+    const cats = Array.from(new Set(branchProducts.map(p => p.category)));
     return cats.sort();
-  }, [products]);
+  }, [products, currentBranchId]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
+      const matchesBranch = p.branchId === currentBranchId;
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           p.category.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !selectedCategory || p.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      return matchesBranch && matchesSearch && matchesCategory;
     });
-  }, [products, searchQuery, selectedCategory]);
+  }, [products, searchQuery, selectedCategory, currentBranchId]);
 
   const handleQuickAdd = async (name: string, price: number) => {
     if (price <= 0 || !currentBranchId) return;
@@ -229,257 +232,259 @@ export default function POSPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      <Header ticketNumber={currentTicket} />
-      
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        {/* Product Selection Area */}
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col gap-6 mb-8">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <Link 
-                    href="/"
-                    className="p-3 bg-white hover:bg-gray-50 rounded-2xl transition-all text-gray-400 hover:text-gray-900 border border-gray-100 shadow-sm"
-                  >
-                    <ArrowLeft className="w-6 h-6" />
-                  </Link>
-                  <div>
-                    <h2 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Checkout</h2>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Select items for transaction</p>
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <Header ticketNumber={currentTicket} />
+        
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+          {/* Product Selection Area */}
+          <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex flex-col gap-6 mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <Link 
+                      href="/"
+                      className="p-3 bg-white hover:bg-gray-50 rounded-2xl transition-all text-gray-400 hover:text-gray-900 border border-gray-100 shadow-sm"
+                    >
+                      <ArrowLeft className="w-6 h-6" />
+                    </Link>
+                    <div>
+                      <h2 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Checkout</h2>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Select items for transaction</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <QuickAdd onAdd={handleQuickAdd} />
+                    <button
+                      onClick={() => setIsEWalletOpen(true)}
+                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl transition-all text-white shadow-lg shadow-blue-100 font-black text-xs uppercase tracking-widest"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      E-Wallet
+                    </button>
+                    <Link
+                      href="/pos/history"
+                      className="flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 rounded-2xl transition-all text-gray-900 border border-gray-100 shadow-sm font-black text-xs uppercase tracking-widest"
+                    >
+                      <History className="w-4 h-4" />
+                      History
+                    </Link>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <QuickAdd onAdd={handleQuickAdd} />
-                  <button
-                    onClick={() => setIsEWalletOpen(true)}
-                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl transition-all text-white shadow-lg shadow-blue-100 font-black text-xs uppercase tracking-widest"
-                  >
-                    <Wallet className="w-4 h-4" />
-                    E-Wallet
-                  </button>
-                  <Link
-                    href="/pos/history"
-                    className="flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 rounded-2xl transition-all text-gray-900 border border-gray-100 shadow-sm font-black text-xs uppercase tracking-widest"
-                  >
-                    <History className="w-4 h-4" />
-                    History
-                  </Link>
-                </div>
-              </div>
-              
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search products or categories..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-white rounded-[2rem] border border-gray-100 shadow-sm focus:ring-4 focus:ring-orange-500/10 outline-none transition-all text-lg font-medium"
-                  />
-                </div>
-                
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-                  <button
-                    onClick={() => setSelectedCategory(null)}
-                    className={`px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap border ${
-                      !selectedCategory 
-                        ? 'bg-gray-900 text-white border-gray-900 shadow-lg' 
-                        : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'
-                    }`}
-                  >
-                    All
-                  </button>
-                  {categories.map(cat => (
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search products or categories..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-white rounded-[2rem] border border-gray-100 shadow-sm focus:ring-4 focus:ring-orange-500/10 outline-none transition-all text-lg font-medium"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
                     <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
+                      onClick={() => setSelectedCategory(null)}
                       className={`px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap border ${
-                        selectedCategory === cat
+                        !selectedCategory 
                           ? 'bg-gray-900 text-white border-gray-900 shadow-lg' 
                           : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'
                       }`}
                     >
-                      {cat}
+                      All
                     </button>
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap border ${
+                          selectedCategory === cat
+                            ? 'bg-gray-900 text-white border-gray-900 shadow-lg' 
+                            : 'bg-white text-gray-400 border-gray-100 hover:border-gray-300'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+  
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-gray-200 shadow-inner">
+                  <PackageOpen className="w-20 h-20 text-gray-200 mx-auto mb-6" />
+                  <h3 className="text-xl font-bold text-gray-900 uppercase tracking-tight">No products found</h3>
+                  <p className="text-gray-400 mt-2 font-medium">Try searching for something else or add a new product.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-6 pb-24 lg:pb-0">
+                  {filteredProducts.map((product) => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onAdd={addToCart} 
+                    />
                   ))}
                 </div>
-              </div>
-            </div>
-
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-gray-200 shadow-inner">
-                <PackageOpen className="w-20 h-20 text-gray-200 mx-auto mb-6" />
-                <h3 className="text-xl font-bold text-gray-900 uppercase tracking-tight">No products found</h3>
-                <p className="text-gray-400 mt-2 font-medium">Try searching for something else or add a new product.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-6 pb-24 lg:pb-0">
-                {filteredProducts.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
-                    onAdd={addToCart} 
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Desktop Cart Sidebar */}
-        <div className="hidden lg:flex w-[450px] bg-white border-l border-gray-100 flex-col shadow-2xl relative z-10">
-          <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-600 p-3 rounded-2xl text-white shadow-lg shadow-orange-100">
-                <ShoppingCart className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Cart</h3>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Review items before checkout</p>
-              </div>
-            </div>
-            <span className="bg-orange-100 text-orange-600 text-sm font-black px-4 py-1.5 rounded-full">
-              {cart.reduce((acc, item) => acc + item.quantity, 0)} ITEMS
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-8 space-y-6">
-            <AnimatePresence mode="popLayout">
-              {cart.length === 0 ? (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="h-full flex flex-col items-center justify-center text-center text-gray-300"
-                >
-                  <div className="bg-gray-50 p-8 rounded-[3rem] mb-6">
-                    <ShoppingCart className="w-16 h-16 opacity-20" />
-                  </div>
-                  <p className="font-black text-xl text-gray-400 uppercase tracking-tight">Cart is empty</p>
-                  <p className="text-sm mt-2 max-w-[200px] mx-auto">Select products from the grid to start a transaction</p>
-                </motion.div>
-              ) : (
-                cart.map((item) => (
-                  <CartItem 
-                    key={item.productId} 
-                    item={item} 
-                    onUpdateQuantity={updateQuantity} 
-                    onRemove={removeFromCart} 
-                  />
-                ))
               )}
-            </AnimatePresence>
-          </div>
-
-          <CheckoutSummary 
-            total={total} 
-            itemCount={cart.length} 
-            onCheckout={handleCheckout} 
-            disabled={cart.length === 0 || isCheckingOut} 
-            isCheckingOut={isCheckingOut} 
-          />
-        </div>
-
-        {/* Mobile Cart Toggle Button */}
-        <div className="lg:hidden fixed bottom-6 left-6 right-6 z-40">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowCartMobile(true)}
-            className="w-full bg-gray-900 text-white p-6 rounded-[2rem] flex items-center justify-between shadow-2xl shadow-gray-400"
-          >
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <ShoppingCart className="w-6 h-6" />
-                {cart.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-orange-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-gray-900">
-                    {cart.reduce((acc, item) => acc + item.quantity, 0)}
-                  </span>
-                )}
-              </div>
-              <span className="font-black text-lg tracking-tight uppercase">View Cart</span>
             </div>
-            <span className="text-2xl font-black">₱{total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
-          </motion.button>
-        </div>
-
-        {/* Mobile Cart Overlay */}
-        <AnimatePresence>
-          {showCartMobile && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex flex-col justify-end"
-            >
-              <motion.div
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="bg-white rounded-t-[3rem] max-h-[90vh] flex flex-col shadow-2xl"
-              >
-                <div className="p-8 border-b border-gray-100 flex items-center justify-between">
-                  <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Your Cart</h3>
-                  <button 
-                    onClick={() => setShowCartMobile(false)}
-                    className="p-3 bg-gray-100 rounded-2xl text-gray-500"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
+          </div>
+  
+          {/* Desktop Cart Sidebar */}
+          <div className="hidden lg:flex w-[450px] bg-white border-l border-gray-100 flex-col shadow-2xl relative z-10">
+            <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+              <div className="flex items-center gap-4">
+                <div className="bg-orange-600 p-3 rounded-2xl text-white shadow-lg shadow-orange-100">
+                  <ShoppingCart className="w-6 h-6" />
                 </div>
-                
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                  {cart.length === 0 ? (
-                    <div className="py-20 text-center text-gray-400">
-                      <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                      <p className="font-bold uppercase tracking-widest">Cart is empty</p>
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Cart</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Review items before checkout</p>
+                </div>
+              </div>
+              <span className="bg-orange-100 text-orange-600 text-sm font-black px-4 py-1.5 rounded-full">
+                {cart.reduce((acc, item) => acc + item.quantity, 0)} ITEMS
+              </span>
+            </div>
+  
+            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              <AnimatePresence mode="popLayout">
+                {cart.length === 0 ? (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="h-full flex flex-col items-center justify-center text-center text-gray-300"
+                  >
+                    <div className="bg-gray-50 p-8 rounded-[3rem] mb-6">
+                      <ShoppingCart className="w-16 h-16 opacity-20" />
                     </div>
-                  ) : (
-                    cart.map((item) => (
-                      <CartItem 
-                        key={item.productId} 
-                        item={item} 
-                        onUpdateQuantity={updateQuantity} 
-                        onRemove={removeFromCart} 
-                      />
-                    ))
+                    <p className="font-black text-xl text-gray-400 uppercase tracking-tight">Cart is empty</p>
+                    <p className="text-sm mt-2 max-w-[200px] mx-auto">Select products from the grid to start a transaction</p>
+                  </motion.div>
+                ) : (
+                  cart.map((item) => (
+                    <CartItem 
+                      key={item.productId} 
+                      item={item} 
+                      onUpdateQuantity={updateQuantity} 
+                      onRemove={removeFromCart} 
+                    />
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
+  
+            <CheckoutSummary 
+              total={total} 
+              itemCount={cart.length} 
+              onCheckout={handleCheckout} 
+              disabled={cart.length === 0 || isCheckingOut} 
+              isCheckingOut={isCheckingOut} 
+            />
+          </div>
+  
+          {/* Mobile Cart Toggle Button */}
+          <div className="lg:hidden fixed bottom-6 left-6 right-6 z-40">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowCartMobile(true)}
+              className="w-full bg-gray-900 text-white p-6 rounded-[2rem] flex items-center justify-between shadow-2xl shadow-gray-400"
+            >
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <ShoppingCart className="w-6 h-6" />
+                  {cart.length > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-orange-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-gray-900">
+                      {cart.reduce((acc, item) => acc + item.quantity, 0)}
+                    </span>
                   )}
                 </div>
-
-                <div className="p-2">
-                  <CheckoutSummary 
-                    total={total} 
-                    itemCount={cart.length} 
-                    onCheckout={handleCheckout} 
-                    disabled={cart.length === 0 || isCheckingOut} 
-                    isCheckingOut={isCheckingOut} 
-                  />
-                </div>
+                <span className="font-black text-lg tracking-tight uppercase">View Cart</span>
+              </div>
+              <span className="text-2xl font-black">₱{total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+            </motion.button>
+          </div>
+  
+          {/* Mobile Cart Overlay */}
+          <AnimatePresence>
+            {showCartMobile && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex flex-col justify-end"
+              >
+                <motion.div
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="bg-white rounded-t-[3rem] max-h-[90vh] flex flex-col shadow-2xl"
+                >
+                  <div className="p-8 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Your Cart</h3>
+                    <button 
+                      onClick={() => setShowCartMobile(false)}
+                      className="p-3 bg-gray-100 rounded-2xl text-gray-500"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {cart.length === 0 ? (
+                      <div className="py-20 text-center text-gray-400">
+                        <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                        <p className="font-bold uppercase tracking-widest">Cart is empty</p>
+                      </div>
+                    ) : (
+                      cart.map((item) => (
+                        <CartItem 
+                          key={item.productId} 
+                          item={item} 
+                          onUpdateQuantity={updateQuantity} 
+                          onRemove={removeFromCart} 
+                        />
+                      ))
+                    )}
+                  </div>
+  
+                  <div className="p-2">
+                    <CheckoutSummary 
+                      total={total} 
+                      itemCount={cart.length} 
+                      onCheckout={handleCheckout} 
+                      disabled={cart.length === 0 || isCheckingOut} 
+                      isCheckingOut={isCheckingOut} 
+                    />
+                  </div>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </div>
+  
+        <SuccessOverlay 
+          show={showSuccess} 
+          onClose={() => setShowSuccess(false)}
+          onViewReceipt={() => {
+            setShowSuccess(false);
+          }}
+          title="Salamat Po!"
+          message="Transaction completed successfully. Have a great day!"
+          ticketNumber={completedTicket}
+        />
+  
+        <EWalletModal
+          isOpen={isEWalletOpen}
+          onClose={() => setIsEWalletOpen(false)}
+          onSave={handleEWalletSave}
+        />
       </div>
-
-      <SuccessOverlay 
-        show={showSuccess} 
-        onClose={() => setShowSuccess(false)}
-        onViewReceipt={() => {
-          setShowSuccess(false);
-        }}
-        title="Salamat Po!"
-        message="Transaction completed successfully. Have a great day!"
-        ticketNumber={completedTicket}
-      />
-
-      <EWalletModal
-        isOpen={isEWalletOpen}
-        onClose={() => setIsEWalletOpen(false)}
-        onSave={handleEWalletSave}
-      />
-    </div>
+    </AuthGuard>
   );
 }

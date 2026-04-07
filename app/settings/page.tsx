@@ -8,6 +8,7 @@ import { Store, ArrowLeft, Save, Percent, X, Building2, MapPin, Hash, ClipboardL
 import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { UserManagement } from '@/components/admin/user-management';
+import { AuthGuard } from '@/components/auth/auth-guard';
 
 export default function SettingsPage() {
   const { store, updateStore, loading } = useStore();
@@ -54,249 +55,251 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <Header />
-      
-      <div className="p-6 md:p-12 max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div className="flex items-center gap-6">
-            <Link 
-              href="/"
-              className="p-4 bg-white hover:bg-gray-100 rounded-2xl transition-all text-gray-400 hover:text-gray-900 border border-gray-100 shadow-sm"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </Link>
-            <div>
-              <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-tight">Settings</h1>
-              <p className="text-gray-500 font-medium">Manage your business configuration and team.</p>
-            </div>
-          </div>
-
-          {isAdmin && (
-            <div className="flex gap-2 bg-white p-2 rounded-[2rem] shadow-sm border border-gray-100">
-              <button
-                onClick={() => setActiveTab('business')}
-                className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
-                  activeTab === 'business' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                Business
-              </button>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
-                  activeTab === 'users' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                Users
-              </button>
-            </div>
-          )}
-        </div>
-
-        <AnimatePresence mode="wait">
-          {activeTab === 'business' ? (
-            <motion.div 
-              key="business"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden"
-            >
-              <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  {/* Basic Info Section */}
-                  <div className="space-y-8">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
-                        <Building2 className="w-5 h-5" />
-                      </div>
-                      <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Basic Information</h3>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Name</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          required
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                          placeholder="Enter store name"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Address</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-                        <input
-                          type="text"
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                          placeholder="Enter store address"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">TIN (Tax Identification Number)</label>
-                      <div className="relative">
-                        <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
-                        <input
-                          type="text"
-                          value={tin}
-                          onChange={(e) => setTin(e.target.value)}
-                          className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                          placeholder="000-000-000-000"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tax Config Section */}
-                  <div className="space-y-8">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-                        <Percent className="w-5 h-5" />
-                      </div>
-                      <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Tax Configuration</h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4">
-                      <button
-                        type="button"
-                        onClick={() => setTaxType('NON-VAT')}
-                        className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
-                          taxType === 'NON-VAT'
-                            ? 'border-orange-600 bg-orange-50'
-                            : 'border-gray-100 bg-white hover:border-gray-200'
-                        }`}
-                      >
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                          taxType === 'NON-VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
-                        }`}>
-                          <X className="w-8 h-8" />
-                        </div>
-                        <div>
-                          <p className={`font-black text-xl uppercase tracking-tighter ${
-                            taxType === 'NON-VAT' ? 'text-orange-900' : 'text-gray-400'
-                          }`}>Non-VAT</p>
-                          <p className="text-sm text-gray-500 font-medium">Standard for small businesses. No tax breakdown on receipts.</p>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setTaxType('VAT')}
-                        className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
-                          taxType === 'VAT'
-                            ? 'border-orange-600 bg-orange-50'
-                            : 'border-gray-100 bg-white hover:border-gray-200'
-                        }`}
-                      >
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                          taxType === 'VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
-                        }`}>
-                          <Percent className="w-8 h-8" />
-                        </div>
-                        <div>
-                          <p className={`font-black text-xl uppercase tracking-tighter ${
-                            taxType === 'VAT' ? 'text-orange-900' : 'text-gray-400'
-                          }`}>VAT (12%)</p>
-                          <p className="text-sm text-gray-500 font-medium">Value Added Tax. Shows detailed breakdown on all receipts.</p>
-                        </div>
-                      </button>
-                    </div>
-
-                    {taxType === 'VAT' && (
-                      <div className="space-y-3 pt-4">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">VAT Rate (%)</label>
-                        <input
-                          type="number"
-                          value={vatRate}
-                          onChange={(e) => setVatRate(Number(e.target.value))}
-                          className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
-                          min="0"
-                          max="100"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-4">
-                    {showSuccess && (
-                      <motion.div 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="bg-green-50 text-green-600 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-full flex items-center gap-2"
-                      >
-                        <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
-                        Settings Saved Successfully
-                      </motion.div>
-                    )}
-                  </div>
-                  
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="w-full md:w-auto bg-gray-900 text-white font-black px-12 py-6 rounded-[2rem] flex items-center justify-center gap-4 hover:bg-black transition-all active:scale-95 shadow-2xl disabled:opacity-50 disabled:scale-100 uppercase tracking-widest text-sm"
-                  >
-                    <Save className="w-6 h-6" />
-                    {isSaving ? 'SAVING CHANGES...' : 'SAVE BUSINESS SETTINGS'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="users"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <UserManagement />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Link 
-            href="/admin/audit-trail"
-            className="group p-8 bg-white hover:bg-orange-50 rounded-[2.5rem] border border-gray-100 hover:border-orange-200 transition-all flex items-center justify-between shadow-sm hover:shadow-xl hover:shadow-orange-500/5"
-          >
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50 font-sans">
+        <Header />
+        
+        <div className="p-6 md:p-12 max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
             <div className="flex items-center gap-6">
-              <div className="bg-orange-100 p-4 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all">
-                <ClipboardList className="w-8 h-8" />
+              <Link 
+                href="/"
+                className="p-4 bg-white hover:bg-gray-100 rounded-2xl transition-all text-gray-400 hover:text-gray-900 border border-gray-100 shadow-sm"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </Link>
+              <div>
+                <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-tight">Settings</h1>
+                <p className="text-gray-500 font-medium">Manage your business configuration and team.</p>
+              </div>
+            </div>
+  
+            {isAdmin && (
+              <div className="flex gap-2 bg-white p-2 rounded-[2rem] shadow-sm border border-gray-100">
+                <button
+                  onClick={() => setActiveTab('business')}
+                  className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
+                    activeTab === 'business' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  Business
+                </button>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`px-8 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 ${
+                    activeTab === 'users' ? 'bg-orange-600 text-white shadow-xl shadow-orange-100' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  Users
+                </button>
+              </div>
+            )}
+          </div>
+  
+          <AnimatePresence mode="wait">
+            {activeTab === 'business' ? (
+              <motion.div 
+                key="business"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden"
+              >
+                <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    {/* Basic Info Section */}
+                    <div className="space-y-8">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Basic Information</h3>
+                      </div>
+  
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Name</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            required
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                            placeholder="Enter store name"
+                          />
+                        </div>
+                      </div>
+  
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Store Address</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
+                          <input
+                            type="text"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                            placeholder="Enter store address"
+                          />
+                        </div>
+                      </div>
+  
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">TIN (Tax Identification Number)</label>
+                        <div className="relative">
+                          <Hash className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
+                          <input
+                            type="text"
+                            value={tin}
+                            onChange={(e) => setTin(e.target.value)}
+                            className="w-full bg-gray-50 border-none rounded-[2rem] pl-14 pr-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                            placeholder="000-000-000-000"
+                          />
+                        </div>
+                      </div>
+                    </div>
+  
+                    {/* Tax Config Section */}
+                    <div className="space-y-8">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                          <Percent className="w-5 h-5" />
+                        </div>
+                        <h3 className="font-black text-sm uppercase tracking-widest text-gray-900">Tax Configuration</h3>
+                      </div>
+  
+                      <div className="grid grid-cols-1 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setTaxType('NON-VAT')}
+                          className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
+                            taxType === 'NON-VAT'
+                              ? 'border-orange-600 bg-orange-50'
+                              : 'border-gray-100 bg-white hover:border-gray-200'
+                          }`}
+                        >
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                            taxType === 'NON-VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
+                          }`}>
+                            <X className="w-8 h-8" />
+                          </div>
+                          <div>
+                            <p className={`font-black text-xl uppercase tracking-tighter ${
+                              taxType === 'NON-VAT' ? 'text-orange-900' : 'text-gray-400'
+                            }`}>Non-VAT</p>
+                            <p className="text-sm text-gray-500 font-medium">Standard for small businesses. No tax breakdown on receipts.</p>
+                          </div>
+                        </button>
+  
+                        <button
+                          type="button"
+                          onClick={() => setTaxType('VAT')}
+                          className={`p-8 rounded-[2.5rem] border-2 transition-all text-left flex items-center gap-6 ${
+                            taxType === 'VAT'
+                              ? 'border-orange-600 bg-orange-50'
+                              : 'border-gray-100 bg-white hover:border-gray-200'
+                          }`}
+                        >
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                            taxType === 'VAT' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'
+                          }`}>
+                            <Percent className="w-8 h-8" />
+                          </div>
+                          <div>
+                            <p className={`font-black text-xl uppercase tracking-tighter ${
+                              taxType === 'VAT' ? 'text-orange-900' : 'text-gray-400'
+                            }`}>VAT (12%)</p>
+                            <p className="text-sm text-gray-500 font-medium">Value Added Tax. Shows detailed breakdown on all receipts.</p>
+                          </div>
+                        </button>
+                      </div>
+  
+                      {taxType === 'VAT' && (
+                        <div className="space-y-3 pt-4">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">VAT Rate (%)</label>
+                          <input
+                            type="number"
+                            value={vatRate}
+                            onChange={(e) => setVatRate(Number(e.target.value))}
+                            className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-5 font-bold text-gray-900 focus:ring-4 focus:ring-orange-100 transition-all outline-none text-lg"
+                            min="0"
+                            max="100"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+  
+                  <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                      {showSuccess && (
+                        <motion.div 
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="bg-green-50 text-green-600 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-full flex items-center gap-2"
+                        >
+                          <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
+                          Settings Saved Successfully
+                        </motion.div>
+                      )}
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="w-full md:w-auto bg-gray-900 text-white font-black px-12 py-6 rounded-[2rem] flex items-center justify-center gap-4 hover:bg-black transition-all active:scale-95 shadow-2xl disabled:opacity-50 disabled:scale-100 uppercase tracking-widest text-sm"
+                    >
+                      <Save className="w-6 h-6" />
+                      {isSaving ? 'SAVING CHANGES...' : 'SAVE BUSINESS SETTINGS'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="users"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <UserManagement />
+              </motion.div>
+            )}
+          </AnimatePresence>
+  
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link 
+              href="/admin/audit-trail"
+              className="group p-8 bg-white hover:bg-orange-50 rounded-[2.5rem] border border-gray-100 hover:border-orange-200 transition-all flex items-center justify-between shadow-sm hover:shadow-xl hover:shadow-orange-500/5"
+            >
+              <div className="flex items-center gap-6">
+                <div className="bg-orange-100 p-4 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                  <ClipboardList className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-1">Audit Trail</h4>
+                  <p className="text-gray-500 font-medium text-sm">View all system logs and history.</p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-gray-300 group-hover:text-orange-600 transition-all" />
+            </Link>
+  
+            <div className="p-8 bg-orange-50 rounded-[2.5rem] border border-orange-100 flex items-start gap-6">
+              <div className="bg-orange-600 p-3 rounded-xl text-white shadow-lg shadow-orange-200">
+                <Store className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-1">Audit Trail</h4>
-                <p className="text-gray-500 font-medium text-sm">View all system logs and history.</p>
+                <h4 className="text-lg font-black text-orange-900 uppercase tracking-tight mb-2">BIR Compliance Note</h4>
+                <p className="text-orange-800/70 font-medium leading-relaxed">
+                  Ensure your TIN and Address match your official BIR registration. These details will be printed on all Official Receipts (OR) generated by the system.
+                </p>
               </div>
-            </div>
-            <ChevronRight className="w-6 h-6 text-gray-300 group-hover:text-orange-600 transition-all" />
-          </Link>
-
-          <div className="p-8 bg-orange-50 rounded-[2.5rem] border border-orange-100 flex items-start gap-6">
-            <div className="bg-orange-600 p-3 rounded-xl text-white shadow-lg shadow-orange-200">
-              <Store className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-lg font-black text-orange-900 uppercase tracking-tight mb-2">BIR Compliance Note</h4>
-              <p className="text-orange-800/70 font-medium leading-relaxed">
-                Ensure your TIN and Address match your official BIR registration. These details will be printed on all Official Receipts (OR) generated by the system.
-              </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 }

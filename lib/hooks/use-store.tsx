@@ -1,8 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { StoreInfo } from '@/lib/db/idb';
+import { StoreInfo, Product } from '@/lib/db/idb';
 import { storeService } from '@/lib/services/store-service';
+import { productService } from '@/lib/services/product-service';
 import { auditService } from '@/lib/services/audit-service';
 
 interface StoreContextType {
@@ -10,12 +11,15 @@ interface StoreContextType {
   loading: boolean;
   updateStore: (name: string, address?: string, tin?: string, taxType?: 'VAT' | 'NON-VAT', vatRate?: number) => Promise<void>;
   getNextORNumber: () => Promise<string>;
+  products: Product[];
+  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<Product>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [store, setStore] = useState<StoreInfo | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadStore = async () => {
@@ -24,6 +28,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (currentStore) {
         setStore(currentStore);
       }
+      const allProducts = await productService.getAll();
+      setProducts(allProducts.sort((a, b) => b.createdAt - a.createdAt));
     } catch (error) {
       console.error('Failed to load store info:', error);
     } finally {
@@ -34,6 +40,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadStore();
   }, []);
+
+  const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => {
+    const id = crypto.randomUUID();
+    const now = Date.now();
+    const newProduct: Product = {
+      ...product,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      isDeleted: false,
+    };
+    await productService.create(newProduct);
+    await auditService.log('PRODUCT_ADD', JSON.stringify({ name: product.name, id }));
+    await loadStore();
+    return newProduct;
+  };
 
   const updateStore = async (name: string, address: string = '', tin: string = '', taxType: 'VAT' | 'NON-VAT' = 'NON-VAT', vatRate: number = 12) => {
     const currentStore = await storeService.getById('main_config');
@@ -76,7 +98,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <StoreContext.Provider value={{ store, loading, updateStore, getNextORNumber }}>
+    <StoreContext.Provider value={{ store, loading, updateStore, getNextORNumber, products, addProduct }}>
       {children}
     </StoreContext.Provider>
   );

@@ -4,7 +4,6 @@ import './globals.css';
 import { StoreProvider } from '@/lib/hooks/use-store';
 import { ReceiptProvider } from '@/lib/context/receipt-context';
 import { AuthProvider } from '@/lib/contexts/auth-context';
-import { AuthGuard } from '@/components/auth/auth-guard';
 import { PWARegistration } from '@/components/pwa-registration';
 import { InstallPWA } from '@/components/layout/install-pwa';
 
@@ -39,15 +38,13 @@ export default function RootLayout({
     <html lang="en">
       <body suppressHydrationWarning>
         <AuthProvider>
-          <AuthGuard>
-            <StoreProvider>
-              <ReceiptProvider>
-                <PWARegistration />
-                <InstallPWA />
-                {children}
-              </ReceiptProvider>
-            </StoreProvider>
-          </AuthGuard>
+          <StoreProvider>
+            <ReceiptProvider>
+              <PWARegistration />
+              <InstallPWA />
+              {children}
+            </ReceiptProvider>
+          </StoreProvider>
         </AuthProvider>
       </body>
     </html>
