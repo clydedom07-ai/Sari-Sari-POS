@@ -1,19 +1,21 @@
 'use client';
 
-import { useBranches } from '@/lib/hooks/use-branches';
+import { useStore } from '@/lib/hooks/use-store';
 import { useAuth } from '@/lib/contexts/auth-context';
-import { MapPin, ChevronDown, Plus } from 'lucide-react';
+import { MapPin, ChevronDown, Plus, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BranchModal } from '../branches/branch-modal';
 
 interface BranchSelectorProps {
   onManageBranches?: () => void;
 }
 
 export function BranchSelector({ onManageBranches }: BranchSelectorProps) {
-  const { branches, currentBranch, selectBranch } = useBranches();
+  const { branches, currentBranch, switchBranch } = useStore();
   const { isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isAddingBranch, setIsAddingBranch] = useState(false);
 
   if (branches.length === 0) return null;
 
@@ -46,15 +48,26 @@ export function BranchSelector({ onManageBranches }: BranchSelectorProps) {
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               className="absolute top-full right-0 mt-2 w-64 bg-white rounded-[2rem] shadow-2xl border border-gray-100 z-50 overflow-hidden"
             >
-              <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+              <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Switch Branch</p>
+                {isAdmin && onManageBranches && (
+                  <button 
+                    onClick={() => {
+                      onManageBranches();
+                      setIsOpen(false);
+                    }}
+                    className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-900 transition-all"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
               <div className="max-h-64 overflow-y-auto p-2">
                 {branches.map((branch) => (
                   <button
                     key={branch.id}
                     onClick={() => {
-                      selectBranch(branch.id);
+                      switchBranch(branch.id);
                       setIsOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
@@ -68,20 +81,26 @@ export function BranchSelector({ onManageBranches }: BranchSelectorProps) {
                   </button>
                 ))}
               </div>
-              {onManageBranches && isAdmin && (
+              {isAdmin && (
                 <button
                   onClick={() => {
-                    onManageBranches();
+                    setIsAddingBranch(true);
                     setIsOpen(false);
                   }}
                   className="w-full flex items-center gap-3 p-4 bg-gray-900 text-white hover:bg-orange-600 transition-colors font-bold text-xs uppercase tracking-widest"
                 >
                   <Plus className="w-4 h-4" />
-                  Manage Branches
+                  Add Branch
                 </button>
               )}
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAddingBranch && (
+          <BranchModal onClose={() => setIsAddingBranch(false)} />
         )}
       </AnimatePresence>
     </div>

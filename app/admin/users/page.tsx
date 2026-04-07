@@ -86,12 +86,28 @@ export default function UsersManagementPage() {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = (users || []).filter(u => 
+    u?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u?.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const loading = usersLoading || loadingBranches;
+
+  // Prevent rendering before critical data is ready if needed, 
+  // though AuthGuard handles initial auth loading.
+  if (usersLoading && users.length === 0 && !searchQuery) {
+    return (
+      <AuthGuard allowedRoles={['admin']}>
+        <div className="min-h-screen bg-gray-50 font-sans">
+          <Header />
+          <main className="max-w-7xl mx-auto px-4 md:px-8 py-20 text-center">
+            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Loading User Management...</p>
+          </main>
+        </div>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard allowedRoles={['admin']}>
@@ -140,7 +156,7 @@ export default function UsersManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {loading ? (
+                  {loading && filteredUsers.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-8 py-20 text-center">
                         <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
@@ -156,35 +172,35 @@ export default function UsersManagementPage() {
                     </tr>
                   ) : (
                     filteredUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={u?.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${u.role === 'admin' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${u?.role === 'admin' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
                               <UserIcon className="w-6 h-6" />
                             </div>
                             <div>
-                              <p className="font-black text-gray-900 tracking-tight">{u.name}</p>
+                              <p className="font-black text-gray-900 tracking-tight">{u?.name || 'Unknown User'}</p>
                               <p className="text-xs text-gray-400 font-bold flex items-center gap-1">
-                                <Mail className="w-3 h-3" /> {u.email}
+                                <Mail className="w-3 h-3" /> {u?.email || 'No Email'}
                               </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-8 py-6">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                            u.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                            u?.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
                           }`}>
                             <Shield className="w-3 h-3" />
-                            {u.role}
+                            {u?.role || 'N/A'}
                           </span>
                         </td>
                         <td className="px-8 py-6">
                           <div className="flex flex-wrap gap-1">
-                            {u.role === 'admin' ? (
+                            {u?.role === 'admin' ? (
                               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">All Branches</span>
-                            ) : u.assignedBranchIds?.length > 0 ? (
+                            ) : u?.assignedBranchIds && u.assignedBranchIds.length > 0 ? (
                               u.assignedBranchIds.map(bid => {
-                                const branch = branches.find(b => b.id === bid);
+                                const branch = branches?.find(b => b?.id === bid);
                                 return (
                                   <span key={bid} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md text-[9px] font-bold">
                                     {branch?.name || 'Unknown'}
@@ -198,7 +214,7 @@ export default function UsersManagementPage() {
                         </td>
                         <td className="px-8 py-6">
                           <p className="text-xs font-bold text-gray-500">
-                            {new Date(u.createdAt).toLocaleDateString()}
+                            {u?.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
                           </p>
                         </td>
                         <td className="px-8 py-6 text-right">
@@ -210,7 +226,7 @@ export default function UsersManagementPage() {
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteUser(u.id)}
+                              onClick={() => u?.id && handleDeleteUser(u.id)}
                               className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />

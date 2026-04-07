@@ -15,6 +15,7 @@ interface StoreContextType {
   updateStore: (name: string, address?: string, tin?: string, taxType?: 'VAT' | 'NON-VAT', vatRate?: number) => Promise<void>;
   getNextORNumber: () => Promise<string>;
   products: Product[];
+  allProducts: Product[];
   addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<Product>;
   branches: Branch[];
   currentBranchId: string | null;
@@ -127,6 +128,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const currentBranch = branches.find(b => b.id === currentBranchId);
 
+  const filteredProducts = products.filter(p => p.branchId === currentBranchId);
+
   const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => {
     const id = crypto.randomUUID();
     const now = Date.now();
@@ -189,7 +192,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loading, 
       updateStore, 
       getNextORNumber, 
-      products, 
+      products: filteredProducts, 
+      allProducts: products,
       addProduct,
       branches,
       currentBranchId,

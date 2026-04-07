@@ -52,20 +52,18 @@ export default function POSPage() {
   const [showCartMobile, setShowCartMobile] = useState(false);
 
   const categories = useMemo(() => {
-    const branchProducts = products.filter(p => p.branchId === currentBranchId);
-    const cats = Array.from(new Set(branchProducts.map(p => p.category)));
+    const cats = Array.from(new Set(products.map(p => p.category)));
     return cats.sort();
-  }, [products, currentBranchId]);
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesBranch = p.branchId === currentBranchId;
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           p.category.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !selectedCategory || p.category === selectedCategory;
-      return matchesBranch && matchesSearch && matchesCategory;
+      return matchesSearch && matchesCategory;
     });
-  }, [products, searchQuery, selectedCategory, currentBranchId]);
+  }, [products, searchQuery, selectedCategory]);
 
   const handleQuickAdd = async (name: string, price: number) => {
     if (price <= 0 || !currentBranchId) return;
@@ -250,8 +248,16 @@ export default function POSPage() {
                       <ArrowLeft className="w-6 h-6" />
                     </Link>
                     <div>
-                      <h2 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Checkout</h2>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Select items for transaction</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Checkout</h2>
+                        {currentBranch && (
+                          <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3" />
+                            {currentBranch.name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select items for transaction</p>
                     </div>
                   </div>
                   
