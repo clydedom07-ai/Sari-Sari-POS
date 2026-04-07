@@ -12,6 +12,7 @@ import Link from 'next/link';
 export function Header({ ticketNumber }: { ticketNumber?: string }) {
   const { store } = useStore();
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [isManagingBranches, setIsManagingBranches] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
