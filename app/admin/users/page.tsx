@@ -204,10 +204,7 @@ export default function UsersManagementPage() {
                         <td className="px-8 py-6 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => {
-                                const { passwordHash, ...userWithoutPassword } = u;
-                                setEditingUser(userWithoutPassword);
-                              }}
+                              onClick={() => setEditingUser(u)}
                               className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"
                             >
                               <Edit2 className="w-4 h-4" />
